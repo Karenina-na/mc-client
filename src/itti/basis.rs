@@ -1,4 +1,4 @@
-use log::info;
+use log::{info, warn};
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
@@ -13,20 +13,6 @@ pub(crate) struct ITTI {
 }
 
 impl ITTI {
-    /// 初始化 ITTI
-    ///
-    /// # Arguments
-    ///
-    /// * `reader_num`: 通信读进程缓冲区大小
-    /// * `writer_num`: 通信写进程缓冲区大小
-    ///
-    /// returns: ITTI
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let itti = ITTI::new(1, 1);
-    /// ```
     pub fn new(
         ip: String, port: String,
         reader_num: i32, writer_num: i32
@@ -95,13 +81,16 @@ impl ITTI {
     pub async fn send(&self, data: Vec<u8>) -> io::Result<()> {
         if let Some(writer_tx) = &self.writer_tx {
             match writer_tx.send(data).await {
-                Ok(_) => {}
+                Ok(_) => {Ok(())}
                 Err(_) => {
-                    return Err(io::Error::new(io::ErrorKind::Other, "channel closed"));
+                    warn!("send failed");
+                    return Err(io::Error::new(io::ErrorKind::Other, "send failed"));
                 }
             }
+        }else {
+            warn!("channel closed");
+            return Err(io::Error::new(io::ErrorKind::Other, "send: channel closed"));
         }
-        Ok(())
     }
 
     pub async fn recv(&mut self) -> io::Result<Vec<u8>> {
@@ -111,17 +100,26 @@ impl ITTI {
                     Ok(data)
                 }
                 None => {
-                    Err(io::Error::new(io::ErrorKind::Other, "channel closed"))
+                    warn!("recv failed");
+                    Err(io::Error::new(io::ErrorKind::Other, "recv failed"))
                 }
             }
         } else {
+            warn!("channel closed");
             Err(io::Error::new(io::ErrorKind::Other, "channel closed"))
         }
+    }
+
+    pub fn stop(&mut self) {
+        drop(self.writer_tx.take());
+        drop(self.reader_rx.take());
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use env_logger::{Builder, Target};
+    use log::info;
     use tokio::{io, spawn};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use crate::itti::basis::ITTI;
@@ -129,12 +127,20 @@ mod tests {
     const MSG_C2S: &str = "hello server";
     const MSG_S2C: &str = "hello client";
 
+    fn init() {
+        // log init
+        let mut builder = Builder::from_default_env();
+        builder.target(Target::Stdout);
+        builder.filter_level(log::LevelFilter::Trace);
+        builder.is_test(true).init();
+    }
+
     async fn simple_tcp_server(){
-        println!("simple_tcp_server start");
+        info!("simple_tcp_server start");
         let listener = tokio::net::TcpListener::bind("127.0.0.1:8080").await.unwrap();
         let (socket, _) = listener.accept().await.unwrap();
         let (mut reader, mut writer) = io::split(socket);
-        println!("simple_tcp_server enter reader");
+        info!("simple_tcp_server enter reader");
 
         // reader
         for _ in 0..10 {
@@ -142,7 +148,7 @@ mod tests {
             match reader.read(&mut buf).await {
                 Ok(n) => {
                     let data = buf[..n].to_vec();
-                    println!("server recv: {:?}", String::from_utf8(data.clone()).unwrap());
+                    info!("server recv: {:?}", String::from_utf8(data.clone()).unwrap());
                     assert_eq!(String::from_utf8(data).unwrap(), MSG_C2S);
                     if n == 0 {
                         break;
@@ -154,7 +160,7 @@ mod tests {
             }
         }
 
-        println!("simple_tcp_server enter writer");
+        info!("simple_tcp_server enter writer");
 
         // writer
         for _ in 0..10 {
@@ -163,14 +169,14 @@ mod tests {
             tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
         }
 
-        println!("simple_tcp_server enter reader/writer");
+        info!("simple_tcp_server enter reader/writer");
 
         // reader-writer
         let mut buf = vec![0; 1024];
         for _ in 0..10 {
             let n = reader.read(&mut buf).await.unwrap();
             let data = buf[..n].to_vec();
-            println!("server recv: {:?}", String::from_utf8(data.clone()).unwrap());
+            info!("server recv: {:?}", String::from_utf8(data.clone()).unwrap());
             assert_eq!(String::from_utf8(data).unwrap(), MSG_C2S);
             writer.write_all(MSG_S2C.as_bytes()).await.unwrap();
         }
@@ -178,13 +184,16 @@ mod tests {
 
     #[tokio::test]
     async fn itti_test() {
+        init();
+
+
         let server = simple_tcp_server();
         spawn(server);
 
-        println!("itti_test start");
+        info!("itti_test start");
         let mut itti = ITTI::new("127.0.0.1".to_string(), "8080".to_string(), 1, 1);
         itti.build().await.unwrap();
-        println!("itti_test connected");
+        info!("itti_test connected");
 
         // reader
         for _ in 0..10 {
@@ -195,7 +204,7 @@ mod tests {
         // writer
         for _ in 0..10 {
             let data = itti.recv().await.unwrap();
-            println!("client recv: {:?}", String::from_utf8(data.clone()).unwrap());
+            info!("client recv: {:?}", String::from_utf8(data.clone()).unwrap());
             assert_eq!(String::from_utf8(data).unwrap(), MSG_S2C);
         }
 
@@ -203,8 +212,10 @@ mod tests {
         for _ in 0..10 {
             itti.send(MSG_C2S.as_bytes().to_vec()).await.unwrap();
             let data = itti.recv().await.unwrap();
-            println!("client recv: {:?}", String::from_utf8(data.clone()).unwrap());
+            info!("client recv: {:?}", String::from_utf8(data.clone()).unwrap());
             assert_eq!(String::from_utf8(data).unwrap(), MSG_S2C);
         }
+
+        itti.stop();
     }
 }
