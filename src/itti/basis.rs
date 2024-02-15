@@ -1,3 +1,4 @@
+use std::net::{IpAddr, SocketAddr};
 use log::{debug, info, warn};
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -41,8 +42,11 @@ impl ITTI {
         self.reader_end_rx = Some(reader_end_rx);
         self.writer_end_rx = Some(writer_end_rx);
 
-        let tcp = TcpStream::connect(format!("{}:{}", self.ip, self.port)).await?;
-        let (mut reader, mut writer) = io::split(tcp);
+        let tcp = TcpStream::connect(SocketAddr::new(
+            self.ip.parse::<IpAddr>().unwrap(),
+            self.port.parse::<u16>().unwrap(),
+        )).await?;
+        let (mut reader, mut writer) = tcp.into_split();
 
         // reader
         tokio::spawn(async move {
@@ -112,8 +116,8 @@ impl ITTI {
             match reader_rx.recv().await {
                 Some(data) => Ok(data),
                 None => {
-                    warn!("recv: recv failed");
-                    Err(io::Error::new(io::ErrorKind::Other, "recv failed"))
+                    info!("recv: None");
+                    Ok(Vec::new())
                 }
             }
         } else {
