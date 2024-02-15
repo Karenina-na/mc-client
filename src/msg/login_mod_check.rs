@@ -14,3 +14,18 @@ pub fn mc_login_mod_check(id: u8, check: bool) -> Vec<u8> {
     .concat();
     login_plugin_response_pkt
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mc_login_mod_check() {
+        let id: u8 = 0x01;
+        let check: bool = false;
+        let result = mc_login_mod_check(id, check);
+        //0400020000
+        let expected: Vec<u8> = vec![0x04, 0x00, 0x02, 0x01, 0x00];
+        assert_eq!(result, expected);
+    }
+}

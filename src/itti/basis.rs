@@ -1,9 +1,9 @@
-use std::net::{IpAddr, SocketAddr};
 use log::{debug, info, warn};
+use std::net::{IpAddr, SocketAddr};
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
-use tokio::time::error::Elapsed;
+
 
 pub struct ITTI {
     reader_rx: Option<mpsc::Receiver<Vec<u8>>>,
@@ -46,7 +46,8 @@ impl ITTI {
         let tcp = TcpStream::connect(SocketAddr::new(
             self.ip.parse::<IpAddr>().unwrap(),
             self.port.parse::<u16>().unwrap(),
-        )).await?;
+        ))
+        .await?;
         let (mut reader, mut writer) = tcp.into_split();
 
         // reader
@@ -287,15 +288,24 @@ mod tests {
         }
 
         // reader-timeout
-        let data = itti.try_recv(tokio::time::Duration::from_millis(50)).await.unwrap();
+        let data = itti
+            .try_recv(tokio::time::Duration::from_millis(50))
+            .await
+            .unwrap();
         debug!(
             "client recv: {:?}",
             String::from_utf8(data.clone()).unwrap()
         );
         assert_eq!(String::from_utf8(data).unwrap(), MSG_S2C);
-        let data = itti.try_recv(tokio::time::Duration::from_millis(10)).await.unwrap();
+        let data = itti
+            .try_recv(tokio::time::Duration::from_millis(10))
+            .await
+            .unwrap();
         assert_eq!(data.len(), 0);
-        let data = itti.try_recv(tokio::time::Duration::from_millis(10)).await.unwrap();
+        let data = itti
+            .try_recv(tokio::time::Duration::from_millis(10))
+            .await
+            .unwrap();
         assert_eq!(data.len(), 0);
 
         // end-test

@@ -20,13 +20,15 @@ mod tests {
 
     #[test]
     fn test_mc_handshake() {
-        let protocol_version: i32 = 754;
-        let ip: &str = "localhost";
+        let protocol_version: i32 = 763;
+        let ip: &str = "127.0.0.1";
         let port: u16 = 25565;
         let login: bool = true;
+
+        // 1000fb05093132372e302e302e3163dd02
         let expected: Vec<u8> = vec![
-            0x00, 0x04, 0x00, 0x00, 0x00, 0x09, 0x6c, 0x6f, 0x63, 0x61, 0x6c, 0x68, 0x6f, 0x73,
-            0x74, 0x00, 0x00, 0x01, 0x01,
+            0x10, 0x00, 0xFB, 0x05, 0x09, 0x31, 0x32, 0x37, 0x2E, 0x30, 0x2E, 0x30, 0x2E, 0x31,
+            0x63, 0xDD, 0x02,
         ];
         assert_eq!(mc_handshake(protocol_version, ip, port, login), expected);
     }

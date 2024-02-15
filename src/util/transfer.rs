@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 pub fn uint2var_int(n: Vec<i32>) -> Vec<u8> {
     let n: Vec<u32> = n.iter().map(|x| *x as u32).collect();
     let mut res: Vec<u8> = Vec::new();
@@ -11,6 +12,7 @@ pub fn uint2var_int(n: Vec<i32>) -> Vec<u8> {
     res
 }
 
+#[allow(dead_code)]
 pub fn var_int2uint(b: Vec<u8>) -> Vec<i32> {
     let mut res: Vec<u32> = Vec::new();
     let mut value: u32 = 0;
@@ -31,6 +33,7 @@ pub fn var_int2uint(b: Vec<u8>) -> Vec<i32> {
     res.iter().map(|x| *x as i32).collect()
 }
 
+#[allow(dead_code)]
 pub fn uint2var_long(n: Vec<i64>) -> Vec<u8> {
     let n: Vec<u64> = n.iter().map(|x| *x as u64).collect();
     let mut res: Vec<u8> = Vec::new();
@@ -44,6 +47,7 @@ pub fn uint2var_long(n: Vec<i64>) -> Vec<u8> {
     res
 }
 
+#[allow(dead_code)]
 pub fn var_long2uint(b: Vec<u8>) -> Vec<i64> {
     let mut res: Vec<u64> = Vec::new();
     let mut value: u64 = 0;
