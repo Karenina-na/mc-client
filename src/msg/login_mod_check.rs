@@ -7,6 +7,10 @@ pub fn mc_login_mod_check(id: u8, check: bool) -> Vec<u8> {
         true => 0x01,
         false => 0x00,
     });
-    login_plugin_response_pkt = [vec![login_plugin_response_pkt.len() as u8], login_plugin_response_pkt].concat();
+    login_plugin_response_pkt = [
+        vec![login_plugin_response_pkt.len() as u8],
+        login_plugin_response_pkt,
+    ]
+    .concat();
     login_plugin_response_pkt
 }

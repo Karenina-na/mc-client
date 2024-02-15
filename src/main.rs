@@ -1,11 +1,9 @@
 use env_logger::Target;
-use log::{debug, error, info, Level, log_enabled, warn};
+use log::{debug, error, info, log_enabled, warn, Level};
 
+mod itti;
 mod msg;
 mod util;
-mod itti;
-
-
 
 #[tokio::main]
 async fn main() {

@@ -9,20 +9,20 @@ pub struct ITTI {
     reader_end_rx: Option<oneshot::Receiver<()>>,
     writer_end_rx: Option<oneshot::Receiver<()>>,
 
-    reader_num: i32,
-    writer_num: i32,
+    reader_buf: i32,
+    writer_buf: i32,
 
     ip: String,
     port: String,
 }
 
 impl ITTI {
-    pub fn new(ip: String, port: String, reader_num: i32, writer_num: i32) -> ITTI {
+    pub fn new(ip: String, port: String, reader_buf: i32, writer_buf: i32) -> ITTI {
         ITTI {
             ip,
             port,
-            reader_num,
-            writer_num,
+            reader_buf,
+            writer_buf,
             reader_rx: None,
             writer_tx: None,
             reader_end_rx: None,
@@ -31,8 +31,8 @@ impl ITTI {
     }
 
     pub async fn build(&mut self) -> io::Result<()> {
-        let (reader_tx, reader_rx) = mpsc::channel(self.reader_num as usize);
-        let (writer_tx, mut writer_rx) = mpsc::channel(self.writer_num as usize);
+        let (reader_tx, reader_rx) = mpsc::channel(self.reader_buf as usize);
+        let (writer_tx, mut writer_rx) = mpsc::channel(self.writer_buf as usize);
         let (reader_end_tx, reader_end_rx) = oneshot::channel();
         let (writer_end_tx, writer_end_rx) = oneshot::channel();
 
