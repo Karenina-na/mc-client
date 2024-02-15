@@ -3,7 +3,7 @@ use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 
-pub(crate) struct ITTI {
+pub struct ITTI {
     reader_rx: Option<mpsc::Receiver<Vec<u8>>>,
     writer_tx: Option<mpsc::Sender<Vec<u8>>>,
 
@@ -119,7 +119,7 @@ impl ITTI {
 #[cfg(test)]
 mod tests {
     use env_logger::{Builder, Target};
-    use log::info;
+    use log::{debug, info};
     use tokio::{io, spawn};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use crate::itti::basis::ITTI;
@@ -128,10 +128,9 @@ mod tests {
     const MSG_S2C: &str = "hello client";
 
     fn init() {
-        // log init
+        std::env::set_var("RUST_LOG", "debug");
         let mut builder = Builder::from_default_env();
         builder.target(Target::Stdout);
-        builder.filter_level(log::LevelFilter::Trace);
         builder.is_test(true).init();
     }
 
@@ -148,7 +147,7 @@ mod tests {
             match reader.read(&mut buf).await {
                 Ok(n) => {
                     let data = buf[..n].to_vec();
-                    info!("server recv: {:?}", String::from_utf8(data.clone()).unwrap());
+                    debug!("server recv: {:?}", String::from_utf8(data.clone()).unwrap());
                     assert_eq!(String::from_utf8(data).unwrap(), MSG_C2S);
                     if n == 0 {
                         break;
@@ -176,14 +175,16 @@ mod tests {
         for _ in 0..10 {
             let n = reader.read(&mut buf).await.unwrap();
             let data = buf[..n].to_vec();
-            info!("server recv: {:?}", String::from_utf8(data.clone()).unwrap());
+            debug!("server recv: {:?}", String::from_utf8(data.clone()).unwrap());
             assert_eq!(String::from_utf8(data).unwrap(), MSG_C2S);
             writer.write_all(MSG_S2C.as_bytes()).await.unwrap();
         }
+
+        info!("simple_tcp_server end");
     }
 
     #[tokio::test]
-    async fn itti_test() {
+    async fn itti_send_recv_test() {
         init();
 
 
@@ -204,7 +205,7 @@ mod tests {
         // writer
         for _ in 0..10 {
             let data = itti.recv().await.unwrap();
-            info!("client recv: {:?}", String::from_utf8(data.clone()).unwrap());
+            debug!("client recv: {:?}", String::from_utf8(data.clone()).unwrap());
             assert_eq!(String::from_utf8(data).unwrap(), MSG_S2C);
         }
 
@@ -212,7 +213,7 @@ mod tests {
         for _ in 0..10 {
             itti.send(MSG_C2S.as_bytes().to_vec()).await.unwrap();
             let data = itti.recv().await.unwrap();
-            info!("client recv: {:?}", String::from_utf8(data.clone()).unwrap());
+            debug!("client recv: {:?}", String::from_utf8(data.clone()).unwrap());
             assert_eq!(String::from_utf8(data).unwrap(), MSG_S2C);
         }
 
