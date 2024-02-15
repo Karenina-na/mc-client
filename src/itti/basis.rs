@@ -3,6 +3,7 @@ use log::{debug, info, warn};
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
+use tokio::time::error::Elapsed;
 
 pub struct ITTI {
     reader_rx: Option<mpsc::Receiver<Vec<u8>>>,
@@ -59,12 +60,13 @@ impl ITTI {
                             break;
                         }
                         let data = buf[..n].to_vec();
-                        if let Err(_) = reader_tx.send(data).await {
-                            info!("reader: channel closed");
+                        if let Err(e) = reader_tx.send(data).await {
+                            info!("reader: send failed - {:?}", e.to_string());
                             break;
                         }
                     }
-                    Err(_) => {
+                    Err(e) => {
+                        info!("reader: read failed - {:?}", e.to_string());
                         break;
                     }
                 }
@@ -78,8 +80,8 @@ impl ITTI {
             loop {
                 match writer_rx.recv().await {
                     Some(data) => {
-                        if let Err(_) = writer.write_all(&data).await {
-                            info!("writer: connection closed");
+                        if let Err(e) = writer.write_all(&data).await {
+                            info!("writer: write failed - {:?}", e.to_string());
                             break;
                         }
                     }
@@ -122,6 +124,25 @@ impl ITTI {
             }
         } else {
             warn!("recv: channel closed");
+            Err(io::Error::new(io::ErrorKind::Other, "channel closed"))
+        }
+    }
+
+    pub async fn try_recv(&mut self, timeout: std::time::Duration) -> io::Result<Vec<u8>> {
+        if let Some(reader_rx) = &mut self.reader_rx {
+            match tokio::time::timeout(timeout, reader_rx.recv()).await {
+                Ok(Some(data)) => Ok(data),
+                Ok(None) => {
+                    info!("try_recv: None");
+                    Ok(Vec::new())
+                }
+                Err(e) => {
+                    debug!("try_recv: timeout - {:?}", e);
+                    Ok(Vec::new())
+                }
+            }
+        } else {
+            warn!("try_recv: channel closed");
             Err(io::Error::new(io::ErrorKind::Other, "channel closed"))
         }
     }
@@ -264,6 +285,18 @@ mod tests {
             );
             assert_eq!(String::from_utf8(data).unwrap(), MSG_S2C);
         }
+
+        // reader-timeout
+        let data = itti.try_recv(tokio::time::Duration::from_millis(50)).await.unwrap();
+        debug!(
+            "client recv: {:?}",
+            String::from_utf8(data.clone()).unwrap()
+        );
+        assert_eq!(String::from_utf8(data).unwrap(), MSG_S2C);
+        let data = itti.try_recv(tokio::time::Duration::from_millis(10)).await.unwrap();
+        assert_eq!(data.len(), 0);
+        let data = itti.try_recv(tokio::time::Duration::from_millis(10)).await.unwrap();
+        assert_eq!(data.len(), 0);
 
         // end-test
         itti.stop().await;
