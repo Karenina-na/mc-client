@@ -1,6 +1,6 @@
 use crate::util::transfer;
 
-pub fn mc_handshake(protocol_version: i32, ip: &str, port: u16, login: bool) -> Vec<u8> {
+pub fn new(protocol_version: i32, ip: &str, port: u16, login: bool) -> Vec<u8> {
     let mut handshake_pkt: Vec<u8> = Vec::new();
     handshake_pkt.push(0x00);
     handshake_pkt.append(&mut transfer::uint2var_int(vec![protocol_version]));
@@ -30,6 +30,6 @@ mod tests {
             0x10, 0x00, 0xFB, 0x05, 0x09, 0x31, 0x32, 0x37, 0x2E, 0x30, 0x2E, 0x30, 0x2E, 0x31,
             0x63, 0xDD, 0x02,
         ];
-        assert_eq!(mc_handshake(protocol_version, ip, port, login), expected);
+        assert_eq!(new(protocol_version, ip, port, login), expected);
     }
 }

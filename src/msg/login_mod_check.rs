@@ -1,4 +1,4 @@
-pub fn mc_login_mod_check(id: u8, check: bool) -> Vec<u8> {
+pub fn new(id: u8, check: bool) -> Vec<u8> {
     let mut login_plugin_response_pkt: Vec<u8> = Vec::new();
     login_plugin_response_pkt.push(0x00);
     login_plugin_response_pkt.push(0x02);
@@ -23,7 +23,7 @@ mod tests {
     fn test_mc_login_mod_check() {
         let id: u8 = 0x01;
         let check: bool = false;
-        let result = mc_login_mod_check(id, check);
+        let result = new(id, check);
         //0400020000
         let expected: Vec<u8> = vec![0x04, 0x00, 0x02, 0x01, 0x00];
         assert_eq!(result, expected);

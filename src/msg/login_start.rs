@@ -1,6 +1,6 @@
 use crate::util::transfer;
 
-pub fn mc_login_start(username: &str) -> Vec<u8> {
+pub fn new(username: &str) -> Vec<u8> {
     let mut login_start_pkt: Vec<u8> = Vec::new();
     login_start_pkt.push(0x00);
     login_start_pkt.append(&mut transfer::uint2var_int(vec![username.len() as i32]));
@@ -17,7 +17,7 @@ mod tests {
     #[test]
     fn test_mc_login_start() {
         let username = "test";
-        let login_start_pkt = mc_login_start(username);
+        let login_start_pkt = new(username);
         // 0700047465737400
         assert_eq!(
             login_start_pkt,
