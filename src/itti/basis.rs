@@ -4,7 +4,6 @@ use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
 
-
 pub struct ITTI {
     reader_rx: Option<mpsc::Receiver<Vec<u8>>>,
     writer_tx: Option<mpsc::Sender<Vec<u8>>>,

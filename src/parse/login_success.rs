@@ -10,7 +10,10 @@ pub fn parse(pkt: Vec<u8>) -> (Vec<u8>, String) {
     // parse
     let uuid = &pkt[3..19];
     let n = pkt[19] as usize;
-    let username = &pkt[20..20 + n].iter().map(|&c| c as char).collect::<String>();
+    let username = &pkt[20..20 + n]
+        .iter()
+        .map(|&c| c as char)
+        .collect::<String>();
 
     return (uuid.to_vec(), username.to_string());
 }
@@ -31,7 +34,10 @@ mod tests {
         assert_eq!(
             uuid,
             //037f5695cc3039649caf8c000e107c14
-            vec![0x03, 0x7F, 0x56, 0x95, 0xCC, 0x30, 0x39, 0x64, 0x9C, 0xAF, 0x8C, 0x00, 0x0E, 0x10, 0x7C, 0x14]
+            vec![
+                0x03, 0x7F, 0x56, 0x95, 0xCC, 0x30, 0x39, 0x64, 0x9C, 0xAF, 0x8C, 0x00, 0x0E, 0x10,
+                0x7C, 0x14
+            ]
         );
         assert_eq!(username, "Karenina");
     }
