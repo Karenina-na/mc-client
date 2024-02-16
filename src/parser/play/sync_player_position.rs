@@ -1,3 +1,4 @@
+use crate::parser::mapper;
 use crate::util::transfer_var;
 
 pub fn parse(pkt: Vec<u8>) -> (f64, f64, f64, f32, f32, bool, i32) {
@@ -6,7 +7,7 @@ pub fn parse(pkt: Vec<u8>) -> (f64, f64, f64, f32, f32, bool, i32) {
         panic!("Invalid packet length");
     }
     // check type
-    if pkt[2] != 0x3C {
+    if pkt[2] != mapper::SYNC_PLAYER_POSITION {
         panic!("Invalid packet type");
     }
 

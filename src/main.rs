@@ -50,10 +50,10 @@ async fn test() {
 
     println!("{:?}", result);
 
-    let mod1 = msg::login::login_mod_check::new(0x00, false);
+    let mod1 = msg::login::login_plugin_response::new(0x00, false);
     itti.send(mod1).await.unwrap();
 
-    let mod2 = msg::login::login_mod_check::new(0x01, false);
+    let mod2 = msg::login::login_plugin_response::new(0x01, false);
     itti.send(mod2).await.unwrap();
 
     // recv uuid

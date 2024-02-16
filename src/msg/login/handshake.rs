@@ -1,8 +1,9 @@
+use crate::msg::mapper;
 use crate::util::transfer_var;
 
 pub fn new(protocol_version: i32, ip: &str, port: u16, login: bool) -> Vec<u8> {
     let mut handshake_pkt: Vec<u8> = Vec::new();
-    handshake_pkt.push(0x00);
+    handshake_pkt.push(mapper::HANDSHAKE);
     handshake_pkt.append(&mut transfer_var::uint2var_int(vec![protocol_version]));
     handshake_pkt.append(&mut transfer_var::uint2var_int(vec![ip.len() as i32]));
     handshake_pkt.append(&mut ip.as_bytes().to_vec());
@@ -19,7 +20,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_mc_handshake() {
+    fn test_new() {
         let protocol_version: i32 = 763;
         let ip: &str = "127.0.0.1";
         let port: u16 = 25565;

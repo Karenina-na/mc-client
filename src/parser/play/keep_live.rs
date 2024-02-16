@@ -1,10 +1,12 @@
+use crate::parser::mapper;
+
 pub fn parse(pkt: Vec<u8>) -> Vec<u8> {
     // check len
     if pkt.len() - 1 != pkt[0] as usize {
         panic!("Invalid packet length");
     }
     // check type
-    if pkt[2] != 0x23 {
+    if pkt[2] != mapper::KEEP_LIVE {
         panic!("Invalid packet type");
     }
     // parse

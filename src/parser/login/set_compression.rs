@@ -1,3 +1,4 @@
+use crate::parser::mapper;
 use crate::util::transfer_var;
 
 pub fn parse(pkt: Vec<u8>) -> i32 {
@@ -6,7 +7,7 @@ pub fn parse(pkt: Vec<u8>) -> i32 {
         panic!("Invalid packet length");
     }
     // check type
-    if pkt[1] != 0x03 {
+    if pkt[1] != mapper::SET_COMPRESSION {
         panic!("Invalid packet type");
     }
 
