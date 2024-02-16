@@ -1,4 +1,4 @@
-use crate::parser::mapper;
+use crate::client::parser::mapper;
 
 pub fn parse(pkt: Vec<u8>) -> (String, bool) {
     // check len
@@ -18,7 +18,7 @@ pub fn parse(pkt: Vec<u8>) -> (String, bool) {
         0x01 => return ("easy".to_string(), lock),
         0x02 => return ("normal".to_string(), lock),
         0x03 => return ("hard".to_string(), lock),
-        _ => panic!("Invalid difficulty")
+        _ => panic!("Invalid difficulty"),
     }
 }
 
@@ -29,9 +29,7 @@ mod tests {
     #[test]
     fn test_parse() {
         // 050c000000
-        let pkt = vec![
-            0x04, 0x00, 0x0c, 0x01, 0x00
-        ];
+        let pkt = vec![0x04, 0x00, 0x0c, 0x01, 0x00];
         let (difficulty, lock) = parse(pkt);
         assert_eq!(difficulty, "easy");
         assert_eq!(lock, false);

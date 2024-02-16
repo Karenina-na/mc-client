@@ -1,4 +1,4 @@
-use crate::msg::mapper;
+use crate::client::msg::mapper;
 
 pub fn new(id: u8, check: bool) -> Vec<u8> {
     let mut login_plugin_response_pkt: Vec<u8> = Vec::new();
