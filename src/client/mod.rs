@@ -1,3 +1,3 @@
 pub mod client;
-mod msg;
+pub mod msg;
 mod parser;

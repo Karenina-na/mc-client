@@ -15,8 +15,8 @@ pub struct ITTI {
     reader_buf: i32,
     writer_buf: i32,
 
-    ip: String,
-    port: String,
+    pub ip: String,
+    pub port: String,
 }
 
 impl IttiInterface for ITTI {}
@@ -121,7 +121,7 @@ impl ITTI {
             match reader_rx.recv().await {
                 Some(data) => Ok(data),
                 None => {
-                    info!("recv: None");
+                    info!("recv: None, server closed");
                     Ok(Vec::new())
                 }
             }
@@ -131,6 +131,7 @@ impl ITTI {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn try_recv(&mut self, timeout: std::time::Duration) -> io::Result<Vec<u8>> {
         if let Some(reader_rx) = &mut self.reader_rx {
             match tokio::time::timeout(timeout, reader_rx.recv()).await {
