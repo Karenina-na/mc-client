@@ -1,6 +1,6 @@
 use crate::client::parser::mapper;
 
-pub fn parse(pkt: Vec<u8>) -> (Vec<u8>, String, String) {
+pub fn parse(pkt: Vec<u8>) -> (u8, String, String) {
     // check len
     if pkt.len() - 1 != pkt[0] as usize {
         panic!("Invalid packet length");
@@ -25,7 +25,7 @@ pub fn parse(pkt: Vec<u8>) -> (Vec<u8>, String, String) {
 
     // check len
     if pkt.len() == 6 + channel_n {
-        return (vec![id], channel.to_string(), "".to_string());
+        return (id, channel.to_string(), "".to_string());
     }
 
     // data
@@ -35,7 +35,7 @@ pub fn parse(pkt: Vec<u8>) -> (Vec<u8>, String, String) {
         .map(|&c| c as char)
         .collect::<String>();
 
-    return (vec![id], channel.to_string(), data.to_string());
+    return (id, channel.to_string(), data.to_string());
 }
 
 #[cfg(test)]
@@ -55,7 +55,7 @@ mod tests {
             0x5f, 0x61, 0x72, 0x67, 0x73,
         ];
         let (id, channel, data) = parse(pkt);
-        assert_eq!(id, vec![0x00]);
+        assert_eq!(id, 0x00);
         assert_eq!(channel, "fabric-networking-api-v1:early_registration");
         assert_eq!(data, "adventure:registered_args");
     }
@@ -69,7 +69,7 @@ mod tests {
             0x74, 0x5f, 0x73, 0x79, 0x6e, 0x63, 0x01,
         ];
         let (id, channel, data) = parse(pkt);
-        assert_eq!(id, vec![0x01]);
+        assert_eq!(id, 0x01);
         assert_eq!(channel, "fabric:custom_ingredient_sync");
         assert_eq!(data, "");
     }
