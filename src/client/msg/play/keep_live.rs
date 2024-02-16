@@ -1,7 +1,9 @@
+use crate::client::msg::mapper;
+
 pub fn new(id: Vec<u8>) -> Vec<u8> {
     let mut keep_alive_pkt: Vec<u8> = Vec::new();
     keep_alive_pkt.push(0x00);
-    keep_alive_pkt.push(0x12);
+    keep_alive_pkt.push(mapper::KEEP_LIVE);
     keep_alive_pkt.extend(id);
     keep_alive_pkt = [vec![keep_alive_pkt.len() as u8], keep_alive_pkt].concat();
     keep_alive_pkt

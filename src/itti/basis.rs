@@ -4,6 +4,8 @@ use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
 
+trait IttiInterface {}
+
 pub struct ITTI {
     reader_rx: Option<mpsc::Receiver<Vec<u8>>>,
     writer_tx: Option<mpsc::Sender<Vec<u8>>>,
@@ -16,6 +18,8 @@ pub struct ITTI {
     ip: String,
     port: String,
 }
+
+impl IttiInterface for ITTI {}
 
 impl ITTI {
     pub fn new(ip: String, port: String, reader_buf: i32, writer_buf: i32) -> ITTI {
@@ -30,7 +34,6 @@ impl ITTI {
             writer_end_rx: None,
         }
     }
-
     pub async fn build(&mut self) -> io::Result<()> {
         let (reader_tx, reader_rx) = mpsc::channel(self.reader_buf as usize);
         let (writer_tx, mut writer_rx) = mpsc::channel(self.writer_buf as usize);

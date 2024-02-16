@@ -1,9 +1,10 @@
+use crate::client::msg::mapper;
 use crate::util::transfer_var;
 
 pub fn new(id: i32) -> Vec<u8> {
     let mut confirmed_tp_pkt: Vec<u8> = Vec::new();
     confirmed_tp_pkt.push(0x00);
-    confirmed_tp_pkt.push(0x00);
+    confirmed_tp_pkt.push(mapper::CONFIRM_TP);
     let id = transfer_var::uint2var_int(vec![id]);
     confirmed_tp_pkt = [confirmed_tp_pkt, id].concat();
     confirmed_tp_pkt = [vec![confirmed_tp_pkt.len() as u8], confirmed_tp_pkt].concat();

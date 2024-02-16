@@ -1,7 +1,9 @@
+use crate::client::msg::mapper;
+
 pub fn new() -> Vec<u8> {
     let mut respawn: Vec<u8> = Vec::new();
     respawn.push(0x00);
-    respawn.push(0x07);
+    respawn.push(mapper::RESPAWN);
     respawn.push(0x00);
     respawn = [vec![respawn.len() as u8], respawn].concat();
     respawn
