@@ -17,9 +17,12 @@ pub fn build_console(tx: tokio::sync::mpsc::Sender<Vec<u8>>) {
             match input.trim() {
                 "/quit" => {
                     // quit
-                    match tx.send(input.as_bytes().to_vec()).await {
-                        Ok(_) => {}
+                    match tx.send(vec![]).await {
+                        Ok(_) => {
+                            info!("console quit");
+                        }
                         Err(_) => {
+                            info!("console quit");
                             info!("client already quit");
                         }
                     }

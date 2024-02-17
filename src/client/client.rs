@@ -17,6 +17,9 @@ enum Status {
 }
 
 pub struct Client {
+    buffer: Option<Vec<u8>>,
+    val: i32,
+
     username: String,
     protocol_version: i32,
     uuid: Option<Vec<u8>>,
@@ -38,6 +41,8 @@ pub struct Client {
 impl Client {
     pub fn new(username: String, protocol_version: i32) -> Client {
         Client {
+            buffer: None,
+            val: 0,
             username,
             protocol_version,
             uuid: None,
@@ -93,7 +98,7 @@ impl Client {
         loop {
             tokio::select! {
                 Some(packet) = receiver.recv() => { // console
-                    if packet == b"/quit" {
+                    if packet == [] {
                         info!("client quit");
                         break;
                     }
@@ -106,14 +111,36 @@ impl Client {
                         }
                     }
                 },
-                Ok(packet) = itti.recv() => { // server
+                Ok(mut packet) = itti.recv() => { // server
                     if packet.len() == 0 {
                         info!("Server closed");
                         break;
                     }
+                    // if last pkt is not complete
+                    if self.val != 0 {
+                        if self.val > packet.len() as i32 { // more packet
+                            self.val -= packet.len() as i32;
+                            let mut buffer = self.buffer.clone().unwrap();
+                            buffer.extend(packet);
+                            self.buffer = Some(buffer);
+                            continue;
+                        }
+                        // last packet
+                        let mut buffer = self.buffer.clone().unwrap();
+                        buffer.extend(packet[..self.val as usize].to_vec());
+                        packet = packet[self.val as usize..].to_vec();
+                        self.buffer = None;
+                        self.val = 0;
+                        self.handle_packet(buffer, itti).await;
+                    }
                     // more packet
-                    let packet = util::split::split_tcp_packet(packet);
-                    for p in packet {
+                    let (mut packets, val) = util::split::split_tcp_packet(packet);
+                    if val != 0 {
+                        self.val = val;
+                        self.buffer = Some(packets.pop().unwrap());
+                    }
+                    // handle packets
+                    for p in packets {
                         self.handle_packet(p, itti).await;
                     }
                 }
@@ -158,7 +185,8 @@ impl Client {
                 } else if packet_id == -1 {
                     // compress
                     // check len
-                    let data_len_num = util::split::get_var_int_num(packet.clone(), 1)[0];
+                    let data_len_num =
+                        util::transfer_var::uint2var_int(Vec::from([data_len])).len();
                     if packet_len != (data_len_num + packet.len()) as i32 {
                         warn!(
                             "Packet(compress) length mismatch: expected: {}, actual: {}",
@@ -212,7 +240,8 @@ impl Client {
                 } else if packet_id == -1 {
                     // compress
                     // check len
-                    let data_len_num = util::split::get_var_int_num(packet.clone(), 1)[0];
+                    let data_len_num =
+                        util::transfer_var::uint2var_int(Vec::from([data_len])).len();
                     if packet_len != (data_len_num + packet.len()) as i32 {
                         warn!(
                             "Packet(compress) length mismatch: expected: {}, actual: {}",
