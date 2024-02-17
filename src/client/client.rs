@@ -19,11 +19,14 @@ pub struct Client {
     username: String,
     protocol_version: i32,
     uuid: Option<Vec<u8>>,
+
     threshold: Option<i32>,
+
     difficulty: Option<String>,
     motor: Option<String>,
     icon: Option<Vec<u8>>,
     enforce_chat: Option<bool>,
+
     position: Option<(f64, f64, f64, f32, f32)>,
 
     compress: bool,
@@ -114,16 +117,6 @@ impl Client {
     }
 
     pub async fn handle_packet(&mut self, packet: Vec<u8>, itti: &ITTI) {
-        match self.threshold {
-            Some(threshold) => {
-                if packet.len() < threshold as usize || packet[0] as usize != packet.len() {
-                    // skip compression or invalid packet
-                    return;
-                }
-            }
-            None => {}
-        }
-
         match self.status {
             Status::HANDSHAKE => {
                 let packet_id = packet[1];

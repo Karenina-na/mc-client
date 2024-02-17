@@ -1,7 +1,6 @@
+use crate::client::console;
 use env_logger::{Builder, Target};
 use lazy_static::lazy_static;
-use log::info;
-use std::process::exit;
 use tokio::sync::mpsc;
 
 mod client;
@@ -26,46 +25,10 @@ async fn main() {
 
     let (tx, mut rx) = mpsc::channel(256);
 
-    // console -- io channel
-    tokio::spawn(async move {
-        loop {
-            let mut input = String::new();
-            match std::io::stdin().read_line(&mut input) {
-                Ok(_) => {}
-                Err(e) => {
-                    info!("Failed to read line: {}", e);
-                    continue;
-                }
-            }
+    // start console
+    console::build_console(tx);
 
-            match input.trim() {
-                "/quit" => {
-                    // quit
-                    match tx.send(input.as_bytes().to_vec()).await {
-                        Ok(_) => {}
-                        Err(_) => {
-                            info!("client already quit");
-                        }
-                    }
-                    break;
-                }
-                "/respawn" => {
-                    // respawn
-                    let msg = client::msg::play::respawn::new(true);
-                    match tx.send(msg).await {
-                        Ok(_) => {}
-                        Err(_) => {
-                            info!("client already quit");
-                        }
-                    }
-                }
-                _ => {
-                    info!("Unknown command: {}", input);
-                }
-            }
-        }
-    });
-
+    // start client
     client.start(&mut itti, &mut rx).await;
 
     // stop
