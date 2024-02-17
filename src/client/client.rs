@@ -6,6 +6,7 @@ use crate::client::parser::login::{login_plugin_request, login_success, set_comp
 use crate::client::parser::mapper;
 use crate::client::parser::play::{change_difficulty, server_data, sync_player_position};
 use crate::itti::basis::ITTI;
+use crate::util;
 use log::{debug, error, info, warn};
 use tokio::sync::mpsc::Receiver;
 
@@ -110,7 +111,11 @@ impl Client {
                         info!("Server closed");
                         break;
                     }
-                    self.handle_packet(packet, itti).await;
+                    // more packet
+                    let packet = util::split::split_tcp_packet(packet);
+                    for p in packet {
+                        self.handle_packet(p, itti).await;
+                    }
                 }
             }
         }
@@ -119,16 +124,127 @@ impl Client {
     pub async fn handle_packet(&mut self, packet: Vec<u8>, itti: &ITTI) {
         match self.status {
             Status::HANDSHAKE => {
+                // check len
+                if packet.len() - 1 != packet[0] as usize {
+                    warn!(
+                        "Packet length mismatch: expected: {}, actual: {}",
+                        packet[0],
+                        packet.len() - 1
+                    );
+                    return;
+                }
                 let packet_id = packet[1];
+                let packet = packet[2..].to_vec();
                 self.handle_handshake_packet(packet, packet_id, itti).await;
             }
             Status::LOGIN => {
-                let packet_id = packet[2];
-                self.handle_login_packet(packet, packet_id, itti).await;
+                let (packet_len, data_len, packet_id, packet) =
+                    util::split::split_packet(packet, self.threshold.unwrap_or(-1));
+
+                if data_len == -1 {
+                    // no compress
+                    // check len
+                    if packet_len != (packet.len() + 1) as i32 {
+                        warn!(
+                            "Packet {} length mismatch: expected: {}, actual: {}",
+                            packet_id,
+                            packet_len,
+                            packet.len() + 1
+                        );
+                        return;
+                    }
+                    self.handle_login_packet(packet, packet_id as u8, itti)
+                        .await;
+                } else if packet_id == -1 {
+                    // compress
+                    // check len
+                    let data_len_num = util::split::get_var_int_num(packet.clone(), 1)[0];
+                    if packet_len != (data_len_num + packet.len()) as i32 {
+                        warn!(
+                            "Packet(compress) length mismatch: expected: {}, actual: {}",
+                            packet_len,
+                            data_len_num + packet.len()
+                        );
+                        return;
+                    }
+                    // uncompressed
+                    if data_len == 0 {
+                        // len < threshold
+                        let packet_id = packet[0];
+                        let packet = packet[1..].to_vec();
+                        self.handle_login_packet(packet, packet_id, itti).await;
+                        return;
+                    }
+
+                    // len > threshold (compressed)
+                    let packet = util::zlib::decompress(packet);
+                    // check data len
+                    if data_len as usize != packet.len() {
+                        warn!(
+                            "Data(compress) length mismatch: expected: {}, actual: {}",
+                            data_len,
+                            packet.len()
+                        );
+                        return;
+                    }
+                    let packet_id = packet[0];
+                    let packet = packet[1..].to_vec();
+                    self.handle_login_packet(packet, packet_id, itti).await;
+                }
             }
             Status::PLAY => {
-                let packet_id = packet[2];
-                self.handle_play_packet(packet, packet_id, itti).await;
+                let (packet_len, data_len, packet_id, packet) =
+                    util::split::split_packet(packet, self.threshold.unwrap_or(-1));
+
+                if data_len == -1 {
+                    // no compress
+                    // check len
+                    if packet_len != (packet.len() + 1) as i32 {
+                        warn!(
+                            "Packet {} length mismatch: expected: {}, actual: {}",
+                            packet_id,
+                            packet_len,
+                            packet.len() + 1
+                        );
+                        return;
+                    }
+                    self.handle_play_packet(packet, packet_id as u8, itti).await;
+                } else if packet_id == -1 {
+                    // compress
+                    // check len
+                    let data_len_num = util::split::get_var_int_num(packet.clone(), 1)[0];
+                    if packet_len != (data_len_num + packet.len()) as i32 {
+                        warn!(
+                            "Packet(compress) length mismatch: expected: {}, actual: {}",
+                            packet_len,
+                            data_len_num + packet.len()
+                        );
+                        return;
+                    }
+                    // uncompressed
+                    if data_len == 0 {
+                        // len < threshold
+                        let packet_id = packet[0];
+                        let packet = packet[1..].to_vec();
+                        self.handle_play_packet(packet, packet_id, itti).await;
+                        return;
+                    }
+
+                    // len > threshold (compressed)
+                    let packet = util::zlib::decompress(packet);
+                    // check data len
+                    if data_len as usize != packet.len() {
+                        warn!(
+                            "Data(compress) length mismatch: expected: {}, actual: {}",
+                            data_len,
+                            packet.len()
+                        );
+                        return;
+                    }
+                    let packet_id = packet[0];
+                    let packet = packet[1..].to_vec();
+                    self.handle_play_packet(packet, packet_id, itti).await;
+                }
             }
         }
     }
@@ -136,6 +252,28 @@ impl Client {
     #[allow(unused_variables)]
     async fn handle_handshake_packet(&mut self, packet: Vec<u8>, packet_id: u8, itti: &ITTI) {
         match packet_id {
+            mapper::LOGIN_SUCCESS => {
+                // 0x02
+                let (uuid, username) = login_success::parse(packet);
+                self.uuid = Some(uuid);
+                if username != self.username {
+                    warn!(
+                        "Server returned a different username: {}, expected: {}",
+                        username, self.username
+                    );
+                }
+                self.status = Status::PLAY;
+                info!(
+                    "Logged in: {}, uuid: {:?}",
+                    username,
+                    self.uuid
+                        .as_ref()
+                        .iter()
+                        .map(|x| format!("0x{:02x?} ", x))
+                        .collect::<String>()
+                );
+                debug!("Changing status to play");
+            }
             mapper::SET_COMPRESSION => {
                 // 0x03
                 let threshold = set_compression::parse(packet);
