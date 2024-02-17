@@ -1,8 +1,10 @@
 use crate::client::msg::mapper;
 
-pub fn new(id: u8, check: bool) -> Vec<u8> {
+pub fn new(id: u8, check: bool, compress: bool) -> Vec<u8> {
     let mut login_plugin_response_pkt: Vec<u8> = Vec::new();
-    login_plugin_response_pkt.push(0x00);
+    if compress {
+        login_plugin_response_pkt.push(0x00);
+    }
     login_plugin_response_pkt.push(mapper::LOGIN_PLUGIN_RESPONSE);
     login_plugin_response_pkt.push(id);
     login_plugin_response_pkt.push(match check {
@@ -22,12 +24,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_new() {
+    fn test_new_compress() {
         let id: u8 = 0x01;
         let check: bool = false;
-        let result = new(id, check);
+        let result = new(id, check, true);
         //0400020000
         let expected: Vec<u8> = vec![0x04, 0x00, 0x02, 0x01, 0x00];
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_new_no_compress() {
+        let id: u8 = 0x01;
+        let check: bool = false;
+        let result = new(id, check, false);
+        //03000200
+        let expected: Vec<u8> = vec![0x03, 0x02, 0x01, 0x00];
         assert_eq!(result, expected);
     }
 }

@@ -51,7 +51,7 @@ async fn main() {
                 }
                 "/respawn" => {
                     // respawn
-                    let msg = client::msg::play::respawn::new();
+                    let msg = client::msg::play::respawn::new(true);
                     match tx.send(msg).await {
                         Ok(_) => {}
                         Err(_) => {

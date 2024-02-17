@@ -26,6 +26,8 @@ pub struct Client {
     enforce_chat: Option<bool>,
     position: Option<(f64, f64, f64, f32, f32)>,
 
+    compress: bool,
+
     status: Status,
 }
 
@@ -41,6 +43,7 @@ impl Client {
             icon: None,
             enforce_chat: None,
             position: None,
+            compress: false,
             status: Status::HANDSHAKE,
         }
     }
@@ -146,6 +149,15 @@ impl Client {
                 self.threshold = Some(threshold);
                 self.status = Status::LOGIN;
                 info!("Set compression: {}", self.threshold.as_ref().unwrap());
+                // check compress
+                match self.threshold {
+                    Some(threshold) => {
+                        if threshold >= 0 {
+                            self.compress = true
+                        }
+                    }
+                    None => {}
+                }
             }
             n => {
                 info!("Unknown packet id: {}", n);
@@ -181,8 +193,7 @@ impl Client {
             mapper::LOGIN_PLUGIN_REQUEST => {
                 // 0x04
                 let (id, channel, data) = login_plugin_request::parse(packet);
-                let response = login_plugin_response::new(id, false);
-                // itti.send(response).await;
+                let response = login_plugin_response::new(id, false, self.compress); // no check
                 match itti.send(response).await {
                     Ok(_) => {
                         debug!("Sent login plugin response");
@@ -218,7 +229,7 @@ impl Client {
             mapper::KEEP_LIVE => {
                 // 0x23
                 let id = parser::play::keep_live::parse(packet);
-                let response = msg::play::keep_live::new(id.clone());
+                let response = msg::play::keep_live::new(id.clone(), self.compress);
                 match itti.send(response).await {
                     Ok(_) => {
                         debug!("Sent keep live response");
@@ -245,7 +256,7 @@ impl Client {
                 // 0x3c
                 let (x, y, z, yaw, pitch, is_abs, tp_id) = sync_player_position::parse(packet);
                 self.position = Some((x, y, z, yaw, pitch));
-                let response = confirm_tp::new(tp_id);
+                let response = confirm_tp::new(tp_id, self.compress);
                 match itti.send(response).await {
                     Ok(_) => {
                         debug!("Sent sync player position response");
