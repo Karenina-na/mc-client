@@ -1,7 +1,10 @@
-use crate::client;
 use log::info;
+use tokio::sync::mpsc;
 
-pub fn build_console(tx: tokio::sync::mpsc::Sender<Vec<u8>>) {
+pub fn build_console(
+    command_tx: mpsc::Sender<Vec<String>>,
+    mut response_rx: mpsc::Receiver<Vec<String>>,
+) {
     // console -- io channel
     tokio::spawn(async move {
         loop {
@@ -13,11 +16,10 @@ pub fn build_console(tx: tokio::sync::mpsc::Sender<Vec<u8>>) {
                     continue;
                 }
             }
-
             match input.trim() {
                 "/quit" => {
                     // quit
-                    match tx.send(vec![]).await {
+                    match command_tx.send(vec![]).await {
                         Ok(_) => {
                             info!("console quit");
                         }
@@ -28,12 +30,54 @@ pub fn build_console(tx: tokio::sync::mpsc::Sender<Vec<u8>>) {
                     }
                     break;
                 }
+                // mc command
                 "/respawn" => {
                     // respawn
-                    let msg = client::msg::play::respawn::new(true);
-                    match tx.send(msg).await {
-                        Ok(_) => {}
+                    match command_tx.send(vec!["respawn".to_string()]).await {
+                        Ok(_) => {
+                            info!("respawn");
+                        }
                         Err(_) => {
+                            info!("client already quit");
+                        }
+                    }
+                }
+                // console
+                "/getPosition" => {
+                    // get position
+                    match command_tx.send(vec!["getPosition".to_string()]).await {
+                        Ok(_) => {
+                            info!("get position");
+                        }
+                        Err(_) => {
+                            info!("client already quit");
+                        }
+                    }
+                    match response_rx.recv().await {
+                        Some(res) => {
+                            info!("position: {:?}", res);
+                        }
+                        None => {
+                            info!("client already quit");
+                        }
+                    }
+                }
+                // server data
+                "/getServerData" => {
+                    // get server data
+                    match command_tx.send(vec!["getServerData".to_string()]).await {
+                        Ok(_) => {
+                            info!("get server data");
+                        }
+                        Err(_) => {
+                            info!("client already quit");
+                        }
+                    }
+                    match response_rx.recv().await {
+                        Some(res) => {
+                            info!("server data: {:?}", res);
+                        }
+                        None => {
                             info!("client already quit");
                         }
                     }

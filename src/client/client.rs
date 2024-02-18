@@ -8,7 +8,7 @@ use crate::client::parser::play::{change_difficulty, server_data, sync_player_po
 use crate::itti::basis::ITTI;
 use crate::util;
 use log::{debug, error, info, warn};
-use tokio::sync::mpsc::Receiver;
+use tokio::sync::mpsc::{Receiver, Sender};
 
 enum Status {
     HANDSHAKE,
@@ -38,6 +38,7 @@ pub struct Client {
     status: Status,
 }
 
+//  base
 impl Client {
     pub fn new(username: String, protocol_version: i32) -> Client {
         Client {
@@ -56,7 +57,12 @@ impl Client {
             status: Status::HANDSHAKE,
         }
     }
-    pub async fn start(&mut self, itti: &mut ITTI, receiver: &mut Receiver<Vec<u8>>) -> () {
+    pub async fn start(
+        &mut self,
+        itti: &mut ITTI,
+        command_rx: &mut Receiver<Vec<String>>,
+        response_tx: &Sender<Vec<String>>,
+    ) -> () {
         // start itti
         match itti.build().await {
             Ok(_) => {
@@ -97,20 +103,15 @@ impl Client {
         // Start listening
         loop {
             tokio::select! {
-                Some(packet) = receiver.recv() => { // console
-                    if packet == [] {
+                Some(packet) = command_rx.recv() => { // console
+                    if packet.len() == 0 {
                         info!("client quit");
                         break;
                     }
-                    match itti.send(packet).await {
-                        Ok(_) => {
-                            debug!("Sent packet successfully");
-                        }
-                        Err(e) => {
-                            error!("Failed to send packet: {}", e.to_string());
-                        }
-                    }
+                    // process command
+                    self.process_command(packet, itti, response_tx).await;
                 },
+
                 Ok(mut packet) = itti.recv() => { // server
                     if packet.len() == 0 {
                         info!("Server closed");
@@ -147,7 +148,10 @@ impl Client {
             }
         }
     }
+}
 
+//  handle packet
+impl Client {
     pub async fn handle_packet(&mut self, packet: Vec<u8>, itti: &ITTI) {
         match self.status {
             Status::HANDSHAKE => {
@@ -439,5 +443,80 @@ impl Client {
             }
             _ => {}
         }
+    }
+}
+
+//  command response
+impl Client {
+    async fn process_command(
+        &mut self,
+        packet: Vec<String>,
+        itti: &ITTI,
+        response_tx: &Sender<Vec<String>>,
+    ) {
+        match packet[0].as_str() {
+            "respawn" => {
+                let response = self.respawn();
+                match itti.send(response).await {
+                    Ok(_) => {
+                        debug!("Sent respawn");
+                    }
+                    Err(e) => {
+                        error!("Failed to send respawn: {}", e.to_string());
+                    }
+                }
+            }
+            "getPosition" => match response_tx.send(vec![self.get_position()]).await {
+                Ok(_) => {
+                    debug!("Sent position");
+                }
+                Err(e) => {
+                    error!("Failed to send position: {}", e.to_string());
+                }
+            },
+            "getServerData" => match response_tx.send(vec![self.get_server_data()]).await {
+                Ok(_) => {
+                    debug!("Sent server data");
+                }
+                Err(e) => {
+                    error!("Failed to send server data: {}", e.to_string());
+                }
+            },
+            _ => {
+                warn!("Unknown command: {}", packet[0]);
+            }
+        }
+    }
+    #[allow(unused_variables)]
+    pub fn get_position(&self) -> String {
+        match self.position {
+            Some((x, y, z, yaw, pitch)) => {
+                format!(
+                    "x: {}, y: {}, z: {}, yaw: {}, pitch: {}",
+                    x, y, z, yaw, pitch
+                )
+            }
+            _ => "No position".to_string(),
+        }
+    }
+
+    #[allow(unused_variables)]
+    pub fn get_server_data(&self) -> String {
+        match (self.motor.clone(), self.icon.clone(), self.enforce_chat) {
+            (Some(motor), Some(icon), Some(enforce_chat)) => {
+                format!(
+                    "motor: {}, icon: {}, enforce chat: {}",
+                    motor,
+                    icon.len() > 0,
+                    enforce_chat
+                )
+            }
+            _ => "No server data".to_string(),
+        }
+    }
+
+    #[allow(unused_variables)]
+    pub fn respawn(&self) -> Vec<u8> {
+        msg::play::respawn::new(self.compress)
     }
 }
