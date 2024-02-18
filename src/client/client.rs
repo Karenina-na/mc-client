@@ -322,7 +322,7 @@ impl Client {
                     }
                     None => {}
                 }
-            },
+            }
             mapper::LOGIN_PLUGIN_REQUEST => {
                 // 0x04
                 let (id, channel, data) = login_plugin_request::parse(packet);
@@ -335,14 +335,12 @@ impl Client {
                         warn!("Failed to send login plugin response: {}", e.to_string());
                     }
                 }
-                debug!(
+                info!(
                     "Login plugin request: id: {}, channel: {}, data: {:?}",
                     id, channel, data
                 );
             }
-            n => {
-                info!("Unknown packet id: {}", n);
-            }
+            _ => {}
         }
     }
 
@@ -383,14 +381,12 @@ impl Client {
                         warn!("Failed to send login plugin response: {}", e.to_string());
                     }
                 }
-                debug!(
+                info!(
                     "Login plugin request: id: {}, channel: {}, data: {:?}",
                     id, channel, data
                 );
             }
-            n => {
-                info!("Unknown packet id: {}", n);
-            }
+            _ => {}
         }
     }
 

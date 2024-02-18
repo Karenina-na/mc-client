@@ -55,11 +55,11 @@ impl ITTI {
         // reader
         tokio::spawn(async move {
             loop {
-                let mut buf = vec![0; 2048];
+                let mut buf = vec![0; 4096];
                 match reader.read(&mut buf).await {
                     Ok(n) => {
                         if n == 0 {
-                            info!("reader: connection closed");
+                            debug!("reader: connection closed");
                             break;
                         }
                         let data = buf[..n].to_vec();
@@ -89,7 +89,7 @@ impl ITTI {
                         }
                     }
                     None => {
-                        info!("writer: channel closed");
+                        debug!("writer: channel closed");
                         break;
                     }
                 }
@@ -164,7 +164,7 @@ impl ITTI {
             let _ = writer_end_rx.await;
             debug!("writer: end");
         }
-        info!("itti: stop");
+        info!("itti: quit");
     }
 }
 

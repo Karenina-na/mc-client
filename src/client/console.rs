@@ -82,6 +82,16 @@ pub fn build_console(
                         }
                     }
                 }
+                "" => {
+                    // empty
+                }
+                "/help" => {
+                    // help
+                    info!("/quit: quit");
+                    info!("/respawn: respawn");
+                    info!("/getPosition: get position");
+                    info!("/getServerData: get server data");
+                }
                 _ => {
                     info!("Unknown command: {}", input);
                 }
