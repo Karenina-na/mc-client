@@ -22,9 +22,8 @@ lazy_static! {
 #[tokio::main]
 async fn main() {
     let _ = *INIT;
-
+    // init
     let mut client = Client::new("Karenina".to_string(), 763);
-
     let mut itti = itti::basis::ITTI::new("127.0.0.1".to_string(), "25565".to_string(), 2048, 2048);
 
     let (command_tx, mut command_rx) = mpsc::channel(256); // command channel (Console -> Client)
@@ -79,6 +78,8 @@ async fn main() {
         }
         // start client
         client.start(&mut itti, &mut command_rx, &response_tx).await;
+        // reset
+        client.reset();
         // stop
         itti.stop().await;
     }

@@ -150,6 +150,20 @@ impl Client {
             }
         }
     }
+
+    pub fn reset(&mut self) {
+        self.buffer = None;
+        self.val = 0;
+        self.uuid = None;
+        self.threshold = None;
+        self.difficulty = None;
+        self.motor = None;
+        self.icon = None;
+        self.enforce_chat = None;
+        self.position = None;
+        self.compress = false;
+        self.status = Status::HANDSHAKE;
+    }
 }
 
 //  handle packet
