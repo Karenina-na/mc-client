@@ -1,5 +1,6 @@
 use crate::client::client::Client;
 use crate::client::console;
+use config::factory::Config;
 use env_logger::{Builder, Target};
 use lazy_static::lazy_static;
 use log::{debug, error, warn};
@@ -7,6 +8,7 @@ use std::process::exit;
 use tokio::sync::mpsc;
 
 mod client;
+mod config;
 mod itti;
 mod util;
 
@@ -22,12 +24,26 @@ lazy_static! {
 #[tokio::main]
 async fn main() {
     let _ = *INIT;
-    // init
-    let mut client = Client::new("Karenina".to_string(), 763);
-    let mut itti = itti::basis::ITTI::new("127.0.0.1".to_string(), "25565".to_string(), 2048, 2048);
+    let config = match Config::load("conf/config.toml".to_string()).await {
+        Ok(config) => config,
+        Err(_) => {
+            error!("load config failed");
+            exit(0)
+        }
+    };
 
-    let (command_tx, mut command_rx) = mpsc::channel(256); // command channel (Console -> Client)
-    let (response_tx, response_rx) = mpsc::channel(256); // response channel (Client -> Console)
+    let mut client = Client::new(config.general.account.username, 763);
+    let mut itti = itti::basis::ITTI::new(
+        config.general.server.host,
+        config.general.server.port.to_string(),
+        config.buffer.tcp_buffer.reader as i32,
+        config.buffer.tcp_buffer.writer as i32,
+    );
+
+    let (command_tx, mut command_rx) =
+        mpsc::channel(config.buffer.console_client_buffer.command as usize); // command channel (Console -> Client)
+    let (response_tx, response_rx) =
+        mpsc::channel(config.buffer.console_client_buffer.response as usize); // response channel (Client -> Console)
 
     // start console
     match response_tx.send(vec!["reconnect".to_string()]).await {
@@ -39,6 +55,16 @@ async fn main() {
     }
     console::build_console(command_tx, response_rx);
 
+    // start client
+    server_loop(&mut itti, &mut client, &mut command_rx, &response_tx).await;
+}
+
+async fn server_loop(
+    itti: &mut itti::basis::ITTI,
+    client: &mut Client,
+    command_rx: &mut mpsc::Receiver<Vec<String>>,
+    response_tx: &mpsc::Sender<Vec<String>>,
+) {
     loop {
         // reconnect
         match response_tx.send(vec!["reconnect".to_string()]).await {
@@ -77,7 +103,7 @@ async fn main() {
             }
         }
         // start client
-        client.start(&mut itti, &mut command_rx, &response_tx).await;
+        client.start(itti, command_rx, &response_tx).await;
         // reset
         client.reset();
         // stop

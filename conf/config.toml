@@ -1,0 +1,16 @@
+[general]
+account.username = "Karenina"   # 账号
+account.password = "-"  # - 表示离线模式，留空表示交互式登录
+auth_server.host = "littleskin.cn"   # 认证服务器地址
+auth_server.port = 443   # 认证服务器端口
+server.host = "127.0.0.1"   # 游戏服务器地址
+server.port = 25565   # 游戏服务器端口
+
+[buffer]
+tcp_buffer.reader = 8192  # TCP读缓冲区大小
+tcp_buffer.writer = 8192  # TCP写缓冲区大小
+console_client_buffer.command = 128  # 控制台命令缓冲区大小
+console_client_buffer.response = 128  # 控制台响应缓冲区大小
+
+[log]
+log_level = "info"  # 日志级别
