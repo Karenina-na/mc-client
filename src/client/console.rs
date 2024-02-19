@@ -13,60 +13,19 @@ pub fn build_console(
             match result {
                 // reconnect
                 Ok(res) if res == vec!["reconnect"] => {
-                    info!("client not connect, please input /help for more information");
-                    loop {
-                        // reconnect
-                        let mut input = String::new();
-                        match std::io::stdin().read_line(&mut input) {
-                            Ok(_) => {
-                                match input.trim() {
-                                    "/quit" => {
-                                        // quit
-                                        match command_tx.send(vec![]).await {
-                                            Ok(_) => {
-                                                info!("console quit");
-                                            }
-                                            Err(_) => {
-                                                info!("console quit");
-                                                info!("client already quit");
-                                            }
-                                        }
-                                        return;
-                                    }
-                                    "/reconnect" => {
-                                        command_tx
-                                            .send(vec!["reconnect".to_string()])
-                                            .await
-                                            .unwrap();
-                                        // clear channel
-                                        loop {
-                                            match response_rx.try_recv() {
-                                                Ok(_) => {}
-                                                Err(_) => {
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                        break;
-                                    }
-                                    "/help" => {
-                                        // help
-                                        info!("/quit: quit");
-                                        info!("/reconnect: reconnect");
-                                    }
-                                    "" => {
-                                        // empty
-                                    }
-                                    _ => {
-                                        info!("Unknown command: {}", input);
-                                    }
+                    if reconnect_loop(command_tx.clone()).await {
+                        // clear channel
+                        loop {
+                            match response_rx.try_recv() {
+                                Ok(_) => {}
+                                Err(_) => {
+                                    break;
                                 }
                             }
-                            Err(e) => {
-                                info!("Failed to read line: {}", e);
-                                continue;
-                            }
                         }
+                    } else {
+                        // quit
+                        break;
                     }
                 }
                 // unknown response
@@ -170,4 +129,54 @@ pub fn build_console(
             }
         }
     });
+}
+
+async fn reconnect_loop(command_tx: mpsc::Sender<Vec<String>>) -> bool {
+    info!("client not connect, please input /help for more information");
+    loop {
+        // reconnect
+        let mut input = String::new();
+        match std::io::stdin().read_line(&mut input) {
+            Ok(_) => {
+                match input.trim() {
+                    "/quit" => {
+                        // quit
+                        match command_tx.send(vec![]).await {
+                            Ok(_) => {
+                                info!("console quit");
+                            }
+                            Err(_) => {
+                                info!("console quit");
+                                info!("client already quit");
+                            }
+                        }
+                        return false;
+                    }
+                    "/reconnect" => {
+                        command_tx
+                            .send(vec!["reconnect".to_string()])
+                            .await
+                            .unwrap();
+                        break;
+                    }
+                    "/help" => {
+                        // help
+                        info!("/quit: quit");
+                        info!("/reconnect: reconnect");
+                    }
+                    "" => {
+                        // empty
+                    }
+                    _ => {
+                        info!("Unknown command: {}", input);
+                    }
+                }
+            }
+            Err(e) => {
+                info!("Failed to read line: {}", e);
+                continue;
+            }
+        }
+    }
+    true
 }

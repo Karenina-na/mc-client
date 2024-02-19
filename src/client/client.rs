@@ -101,6 +101,29 @@ impl Client {
         }
 
         // Start listening
+        self.start_listen(itti, command_rx, response_tx).await;
+    }
+
+    pub fn reset(&mut self) {
+        self.buffer = None;
+        self.val = 0;
+        self.uuid = None;
+        self.threshold = None;
+        self.difficulty = None;
+        self.motor = None;
+        self.icon = None;
+        self.enforce_chat = None;
+        self.position = None;
+        self.compress = false;
+        self.status = Status::HANDSHAKE;
+    }
+
+    async fn start_listen(
+        &mut self,
+        itti: &mut ITTI,
+        command_rx: &mut Receiver<Vec<String>>,
+        response_tx: &Sender<Vec<String>>,
+    ) {
         loop {
             tokio::select! {
                 // console
@@ -110,7 +133,7 @@ impl Client {
                         break;
                     }
                     // process command
-                    self.process_command(packet, itti, response_tx).await;
+                    self.handle_command(packet, itti, response_tx).await;
                 },
 
                 // server
@@ -149,20 +172,6 @@ impl Client {
                 }
             }
         }
-    }
-
-    pub fn reset(&mut self) {
-        self.buffer = None;
-        self.val = 0;
-        self.uuid = None;
-        self.threshold = None;
-        self.difficulty = None;
-        self.motor = None;
-        self.icon = None;
-        self.enforce_chat = None;
-        self.position = None;
-        self.compress = false;
-        self.status = Status::HANDSHAKE;
     }
 }
 
@@ -477,7 +486,7 @@ impl Client {
 
 //  command response
 impl Client {
-    async fn process_command(
+    async fn handle_command(
         &mut self,
         packet: Vec<String>,
         itti: &ITTI,
