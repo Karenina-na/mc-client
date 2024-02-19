@@ -103,7 +103,8 @@ impl Client {
         // Start listening
         loop {
             tokio::select! {
-                Some(packet) = command_rx.recv() => { // console
+                // console
+                Some(packet) = command_rx.recv() => {
                     if packet.len() == 0 {
                         info!("client quit");
                         break;
@@ -112,7 +113,8 @@ impl Client {
                     self.process_command(packet, itti, response_tx).await;
                 },
 
-                Ok(mut packet) = itti.recv() => { // server
+                // server
+                Ok(mut packet) = itti.recv() => {
                     if packet.len() == 0 {
                         info!("Server closed");
                         break;
