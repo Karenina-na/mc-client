@@ -1,0 +1,31 @@
+use crate::util;
+
+pub fn parse(pkt: Vec<u8>) -> (String, bool) {
+    // parse
+    let data_n_num = util::split::get_var_int_num(pkt.clone(), 1);
+    let data_n = util::transfer_var::var_int2uint(pkt[0..data_n_num[0]].to_vec())[0] as usize;
+    let data = String::from_utf8(pkt[1..data_n + 1].to_vec()).unwrap();
+    let is_overlay = pkt[data_n + 1] == 0x01;
+    (data, is_overlay)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse() {
+        let pkt = vec![
+            0x33, 0x7b, 0x22, 0x63, 0x6f, 0x6c, 0x6f, 0x72, 0x22, 0x3a, 0x22, 0x72, 0x65, 0x64,
+            0x22, 0x2c, 0x22, 0x74, 0x72, 0x61, 0x6e, 0x73, 0x6c, 0x61, 0x74, 0x65, 0x22, 0x3a,
+            0x22, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x64, 0x69, 0x73, 0x61, 0x62, 0x6c, 0x65, 0x64,
+            0x2e, 0x6f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x22, 0x7d, 0x00,
+        ];
+        let (data, is_overlay) = parse(pkt);
+        assert_eq!(
+            data,
+            "{\"color\":\"red\",\"translate\":\"chat.disabled.options\"}"
+        );
+        assert_eq!(is_overlay, false);
+    }
+}

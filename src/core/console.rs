@@ -117,8 +117,23 @@ pub fn build_console(
                             info!("/getPosition: get position");
                             info!("/getServerData: get server data");
                         }
-                        _ => {
-                            info!("Unknown command: {}", input);
+                        msg => {
+                            if msg.starts_with('/') {
+                                info!("Unknown command: {}", msg);
+                            } else {
+                                // send message
+                                match command_tx
+                                    .send(vec!["chat".to_string(), msg.to_string()])
+                                    .await
+                                {
+                                    Ok(_) => {
+                                        debug!("send message: {}", msg);
+                                    }
+                                    Err(_) => {
+                                        debug!("client already quit");
+                                    }
+                                }
+                            }
                         }
                     }
                 }
