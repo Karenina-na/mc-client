@@ -234,7 +234,13 @@ impl Client {
                     }
 
                     // len > threshold (compressed)
-                    let packet = util::zlib::decompress(packet);
+                    let packet = match util::zlib::decompress(packet) {
+                        Ok(p) => p,
+                        Err(e) => {
+                            warn!("Failed to decompress: {}", e.to_string());
+                            return;
+                        }
+                    };
                     // check data len
                     if data_len as usize != packet.len() {
                         warn!(
@@ -289,7 +295,13 @@ impl Client {
                     }
 
                     // len > threshold (compressed)
-                    let packet = util::zlib::decompress(packet);
+                    let packet = match util::zlib::decompress(packet) {
+                        Ok(p) => p,
+                        Err(e) => {
+                            warn!("Failed to decompress: {}", e.to_string());
+                            return;
+                        }
+                    };
                     // check data len
                     if data_len as usize != packet.len() {
                         warn!(
