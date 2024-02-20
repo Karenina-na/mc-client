@@ -1,8 +1,13 @@
+use log::error;
+
 pub fn parse(pkt: Vec<u8>) -> String {
-    // parse
-    let data_n = pkt[0] as usize;
-    let data = String::from_utf8(pkt[1..data_n + 1].to_vec()).unwrap();
-    data
+    let data_n_num = crate::util::split::get_var_int_num(pkt.clone(), 1);
+    let data_n =
+        crate::util::transfer_var::var_int2uint(pkt[0..data_n_num[0]].to_vec())[0] as usize;
+    String::from_utf8(pkt[1..data_n + 1].to_vec()).unwrap_or_else(|e| {
+        error!("Error: {}", e);
+        String::from("")
+    })
 }
 
 #[cfg(test)]
