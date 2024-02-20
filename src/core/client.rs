@@ -1,13 +1,14 @@
-use crate::client::msg;
-use crate::client::msg::login::{handshake, login_plugin_response, login_start};
-use crate::client::msg::play::confirm_tp;
-use crate::client::parser;
-use crate::client::parser::login::{login_plugin_request, login_success, set_compression};
-use crate::client::parser::mapper;
-use crate::client::parser::play::{change_difficulty, server_data, sync_player_position};
+use crate::core::msg;
+use crate::core::msg::login::{handshake, login_plugin_response, login_start};
+use crate::core::msg::play::confirm_tp;
+use crate::core::parser;
+use crate::core::parser::login::{login_plugin_request, login_success, set_compression};
+use crate::core::parser::mapper;
+use crate::core::parser::play::{change_difficulty, server_data, sync_player_position};
 use crate::itti::basis::ITTI;
 use crate::util;
 use log::{debug, error, info, warn};
+use msg::play::plugin_message;
 use tokio::sync::mpsc::{Receiver, Sender};
 
 enum Status {
@@ -491,6 +492,39 @@ impl Client {
                     self.position.as_ref().unwrap().4
                 );
             }
+            mapper::PLUGIN_MESSAGE => {
+                // 0x17
+                let (channel, data) = parser::play::plugin_message::parse(packet);
+                info!("Plugin message: channel- {}, data- {:?}", channel, data);
+                match channel.as_str() {
+                    "minecraft:brand" => {
+                        let response = plugin_message::new(
+                            "minecraft:brand".to_string(),
+                            "Minecraft-Console-Client/1.20.2".to_string(),
+                            self.compress,
+                        );
+                        match itti.send(response).await {
+                            Ok(_) => {
+                                debug!("Sent plugin message response");
+                            }
+                            Err(e) => {
+                                warn!("Failed to send plugin message response: {}", e.to_string());
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            mapper::DISCONNECT => {
+                // 0x1a
+                let reason = parser::play::disconnect::parse(packet);
+                info!("Disconnect: {}", reason);
+            }
+            mapper::SYSTEM_CHAT_MESSAGE => {
+                // 0x64
+                let (data, is_overlay) = parser::play::system_chat_message::parse(packet);
+                info!("System chat message: {}, overlay: {}", data, is_overlay);
+            }
             _ => {}
         }
     }
@@ -532,12 +566,24 @@ impl Client {
                     error!("Failed to send server data: {}", e.to_string());
                 }
             },
+            "chat" => {
+                let response = self.chat_message(packet[1].clone());
+                match itti.send(response).await {
+                    Ok(_) => {
+                        debug!("Sent chat message: {}", packet[1]);
+                    }
+                    Err(e) => {
+                        error!("Failed to send chat message: {}", e.to_string());
+                    }
+                }
+            }
             _ => {
                 warn!("Unknown command: {}", packet[0]);
             }
         }
     }
     #[allow(unused_variables)]
+    #[allow(unused)]
     pub fn get_position(&self) -> String {
         match self.position {
             Some((x, y, z, yaw, pitch)) => {
@@ -551,6 +597,7 @@ impl Client {
     }
 
     #[allow(unused_variables)]
+    #[allow(unused)]
     pub fn get_server_data(&self) -> String {
         match (self.motor.clone(), self.icon.clone(), self.enforce_chat) {
             (Some(motor), Some(icon), Some(enforce_chat)) => {
@@ -566,7 +613,14 @@ impl Client {
     }
 
     #[allow(unused_variables)]
+    #[allow(unused)]
     pub fn respawn(&self) -> Vec<u8> {
         msg::play::respawn::new(self.compress)
+    }
+
+    #[allow(unused_variables)]
+    #[allow(unused)]
+    pub fn chat_message(&self, msg: String) -> Vec<u8> {
+        msg::play::chat_message::new(msg, self.compress)
     }
 }

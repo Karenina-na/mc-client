@@ -1,4 +1,4 @@
-use crate::client::msg::mapper;
+use crate::core::msg::mapper;
 use crate::util::transfer_var;
 
 pub fn new(id: i32, compress: bool) -> Vec<u8> {

@@ -8,3 +8,6 @@ pub const KEEP_LIVE: u8 = 0x23;
 pub const SYNC_PLAYER_POSITION: u8 = 0x3C;
 pub const CHANGE_DIFFICULTY: u8 = 0x0C;
 pub const SERVER_DATA: u8 = 0x45;
+pub const PLUGIN_MESSAGE: u8 = 0x17;
+pub const DISCONNECT: u8 = 0x1A;
+pub const SYSTEM_CHAT_MESSAGE: u8 = 0x64;

@@ -1,5 +1,5 @@
-use crate::client::client::Client;
-use crate::client::console;
+use crate::core::client::Client;
+use crate::core::console;
 use config::factory::Config;
 use env_logger::{Builder, Target};
 use lazy_static::lazy_static;
@@ -7,8 +7,8 @@ use log::{debug, error, warn};
 use std::process::exit;
 use tokio::sync::mpsc;
 
-mod client;
 mod config;
+mod core;
 mod itti;
 mod util;
 

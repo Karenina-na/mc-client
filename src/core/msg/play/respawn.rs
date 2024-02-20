@@ -1,4 +1,4 @@
-use crate::client::msg::mapper;
+use crate::core::msg::mapper;
 
 pub fn new(compress: bool) -> Vec<u8> {
     let mut respawn: Vec<u8> = Vec::new();

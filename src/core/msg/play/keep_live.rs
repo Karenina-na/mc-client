@@ -1,4 +1,4 @@
-use crate::client::msg::mapper;
+use crate::core::msg::mapper;
 
 pub fn new(id: Vec<u8>, compress: bool) -> Vec<u8> {
     let mut keep_alive_pkt: Vec<u8> = Vec::new();
