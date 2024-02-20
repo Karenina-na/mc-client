@@ -60,7 +60,7 @@ pub fn build_console(
                             // respawn
                             match command_tx.send(vec!["respawn".to_string()]).await {
                                 Ok(_) => {
-                                    info!("respawn");
+                                    debug!("respawn");
                                 }
                                 Err(_) => {
                                     info!("client already quit");
@@ -72,7 +72,7 @@ pub fn build_console(
                             // get position
                             match command_tx.send(vec!["getPosition".to_string()]).await {
                                 Ok(_) => {
-                                    info!("get position");
+                                    debug!("get position");
                                 }
                                 Err(_) => {
                                     info!("client already quit");
@@ -92,7 +92,7 @@ pub fn build_console(
                             // get server data
                             match command_tx.send(vec!["getServerData".to_string()]).await {
                                 Ok(_) => {
-                                    info!("get server data");
+                                    debug!("get server data");
                                 }
                                 Err(_) => {
                                     info!("client already quit");
