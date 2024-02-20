@@ -3,17 +3,21 @@ use flate2::Compression;
 use std::io::Write;
 
 #[allow(dead_code)]
-pub fn compress(data: Vec<u8>) -> Vec<u8> {
+pub fn compress(data: Vec<u8>) -> Result<Vec<u8>, std::io::Error> {
     let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
-    e.write_all(&data).unwrap();
-    e.finish().unwrap()
+    match e.write_all(&data) {
+        Ok(_) => Ok(e.finish()?),
+        Err(e) => Err(e),
+    }
 }
 
 #[allow(dead_code)]
-pub fn decompress(data: Vec<u8>) -> Vec<u8> {
+pub fn decompress(data: Vec<u8>) -> Result<Vec<u8>, std::io::Error> {
     let mut d = flate2::write::ZlibDecoder::new(Vec::new());
-    d.write_all(&data).unwrap();
-    d.finish().unwrap()
+    match d.write_all(&data) {
+        Ok(_) => Ok(d.finish()?),
+        Err(e) => Err(e),
+    }
 }
 
 #[cfg(test)]
@@ -26,7 +30,10 @@ mod tests {
             0x02, 0x03, 0x7F, 0x56, 0x95, 0xCC, 0x30, 0x39, 0x64, 0x9C, 0xAF, 0x8C, 0x00, 0x0E,
             0x10, 0x7C, 0x14, 0x08, 0x4B, 0x61, 0x72, 0x65, 0x6E, 0x69, 0x6E, 0x61, 0x00,
         ];
-        let compressed = compress(data);
+        let compressed = match compress(data) {
+            Ok(c) => c,
+            Err(e) => panic!("Error: {:?}", e),
+        };
         assert_eq!(
             compressed,
             vec![
@@ -44,7 +51,10 @@ mod tests {
             0x1e, 0x06, 0x3e, 0x81, 0x1a, 0x11, 0x0e, 0xef, 0xc4, 0xa2, 0xd4, 0xbc, 0xcc, 0xbc,
             0x44, 0x06, 0x00, 0x7c, 0xb5, 0x08, 0xbf,
         ];
-        let decompressed = decompress(data);
+        let decompressed = match decompress(data) {
+            Ok(d) => d,
+            Err(e) => panic!("Error: {:?}", e),
+        };
         assert_eq!(decompressed[0], 0x02);
         assert_eq!(
             decompressed[1..],

@@ -1,4 +1,4 @@
-use crate::client::msg::mapper;
+use crate::core::msg::mapper;
 use crate::util::transfer_var;
 
 pub fn new(protocol_version: i32, ip: String, port: u16, login: bool) -> Vec<u8> {

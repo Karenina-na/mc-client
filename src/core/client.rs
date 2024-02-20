@@ -1,10 +1,10 @@
-use crate::client::msg;
-use crate::client::msg::login::{handshake, login_plugin_response, login_start};
-use crate::client::msg::play::confirm_tp;
-use crate::client::parser;
-use crate::client::parser::login::{login_plugin_request, login_success, set_compression};
-use crate::client::parser::mapper;
-use crate::client::parser::play::{change_difficulty, server_data, sync_player_position};
+use crate::core::msg;
+use crate::core::msg::login::{handshake, login_plugin_response, login_start};
+use crate::core::msg::play::confirm_tp;
+use crate::core::parser;
+use crate::core::parser::login::{login_plugin_request, login_success, set_compression};
+use crate::core::parser::mapper;
+use crate::core::parser::play::{change_difficulty, server_data, sync_player_position};
 use crate::itti::basis::ITTI;
 use crate::util;
 use log::{debug, error, info, warn};
@@ -234,7 +234,13 @@ impl Client {
                     }
 
                     // len > threshold (compressed)
-                    let packet = util::zlib::decompress(packet);
+                    let packet = match util::zlib::decompress(packet) {
+                        Ok(p) => p,
+                        Err(e) => {
+                            warn!("Failed to decompress: {}", e.to_string());
+                            return;
+                        }
+                    };
                     // check data len
                     if data_len as usize != packet.len() {
                         warn!(
@@ -289,7 +295,13 @@ impl Client {
                     }
 
                     // len > threshold (compressed)
-                    let packet = util::zlib::decompress(packet);
+                    let packet = match util::zlib::decompress(packet) {
+                        Ok(p) => p,
+                        Err(e) => {
+                            warn!("Failed to decompress: {}", e.to_string());
+                            return;
+                        }
+                    };
                     // check data len
                     if data_len as usize != packet.len() {
                         warn!(
