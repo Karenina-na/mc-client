@@ -6,6 +6,7 @@ pub struct General {
     pub account: Account,
     pub auth_server: AuthServer,
     pub server: Server,
+    pub lang: String,
 }
 
 #[derive(Deserialize)]

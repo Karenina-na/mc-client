@@ -14,3 +14,4 @@ pub const SYSTEM_CHAT_MESSAGE: u8 = 0x64;
 pub const UPDATE_TIME: u8 = 0x5E;
 pub const SET_EXPERIENCE: u8 = 0x56;
 pub const SET_HEALTH: u8 = 0x57;
+pub const DISGUISED_CHAT_MESSAGE: u8 = 0x1B;

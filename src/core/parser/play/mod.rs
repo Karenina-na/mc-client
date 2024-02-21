@@ -1,5 +1,6 @@
 pub mod change_difficulty;
 pub(crate) mod disconnect;
+pub(crate) mod disguised_chat_message;
 pub mod keep_live;
 pub mod plugin_message;
 pub mod server_data;

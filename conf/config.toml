@@ -5,6 +5,7 @@ auth_server.host = "littleskin.cn"   # 认证服务器地址
 auth_server.port = 443   # 认证服务器端口
 server.host = "127.0.0.1"   # 游戏服务器地址
 server.port = 25565   # 游戏服务器端口
+lang = "zh_CN"   # 语言
 
 [buffer]
 tcp_buffer.reader = 8192  # TCP读缓冲区大小

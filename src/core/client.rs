@@ -541,6 +541,7 @@ impl Client {
                 info!("Plugin message: channel- {}, data- {:?}", channel, data);
                 match channel.as_str() {
                     "minecraft:brand" => {
+                        // send brand
                         let response = plugin_message::new(
                             "minecraft:brand".to_string(),
                             "Minecraft-Console-Client/1.20.2".to_string(),
@@ -552,6 +553,22 @@ impl Client {
                             }
                             Err(e) => {
                                 warn!("Failed to send plugin message response: {}", e.to_string());
+                            }
+                        }
+                        // send client information
+                        let response = msg::play::client_information::new(
+                            "en_US".to_string(),
+                            8,
+                            0,
+                            true,
+                            self.compress,
+                        );
+                        match itti.send(response).await {
+                            Ok(_) => {
+                                debug!("Sent client information");
+                            }
+                            Err(e) => {
+                                warn!("Failed to send client information: {}", e.to_string());
                             }
                         }
                     }
@@ -567,6 +584,15 @@ impl Client {
                 // 0x64
                 let (data, is_overlay) = parser::play::system_chat_message::parse(packet);
                 info!("System chat message: {}, overlay: {}", data, is_overlay);
+            }
+            mapper::DISGUISED_CHAT_MESSAGE => {
+                // 0x1b
+                let (msg, chat_type, chat_type_name, has_target_name, target_name) =
+                    parser::play::disguised_chat_message::parse(packet);
+                info!(
+                    "Disguised chat message: msg: {}, chat type: {}, chat type name: {}, has target name: {}, target name: {}",
+                    msg, chat_type, chat_type_name, has_target_name, target_name
+                );
             }
             mapper::UPDATE_TIME => {
                 // 0x5e
