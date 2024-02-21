@@ -2,7 +2,6 @@ use crate::core::client::Client;
 use crate::core::console;
 use config::factory::Config;
 use env_logger::{Builder, Target};
-use lazy_static::lazy_static;
 use log::{debug, error, warn};
 use std::process::exit;
 use tokio::sync::mpsc;
@@ -11,27 +10,20 @@ mod config;
 mod core;
 mod itti;
 mod util;
-
-lazy_static! {
-    static ref INIT: () = {
-        std::env::set_var("RUST_LOG", "debug");
-        let mut builder = Builder::from_default_env();
-        builder.target(Target::Stdout);
-        builder.is_test(true).init();
-    };
-}
-
 #[tokio::main]
 async fn main() {
-    let _ = *INIT;
+    // config
     let config = match Config::load("conf/config.toml".to_string()).await {
         Ok(config) => config,
         Err(_) => {
+            init_log("error".to_string());
             error!("load config failed");
             exit(0)
         }
     };
+    init_log(config.log.log_level);
 
+    // client
     let mut client = Client::new(config.general.account.username, 763);
     let mut itti = itti::basis::ITTI::new(
         config.general.server.host,
@@ -57,6 +49,12 @@ async fn main() {
 
     // start client
     server_loop(&mut itti, &mut client, &mut command_rx, &response_tx).await;
+}
+
+fn init_log(level: String) {
+    std::env::set_var("RUST_LOG", level);
+    let mut builder = Builder::from_default_env();
+    builder.target(Target::Stdout).init();
 }
 
 async fn server_loop(
