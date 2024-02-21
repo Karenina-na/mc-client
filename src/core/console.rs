@@ -41,8 +41,6 @@ pub fn build_console(
             let mut input = String::new();
             match std::io::stdin().read_line(&mut input) {
                 Ok(_) => {
-                    // delete last line
-                    print!("\x1b[1A\x1b[2K");
                     match input.trim() {
                         "/quit" => {
                             // quit
@@ -70,9 +68,9 @@ pub fn build_console(
                             }
                         }
                         // position
-                        "/getPosition" => {
+                        "/position" => {
                             // get position
-                            match command_tx.send(vec!["getPosition".to_string()]).await {
+                            match command_tx.send(vec!["position".to_string()]).await {
                                 Ok(_) => {
                                     debug!("get position");
                                 }
@@ -90,9 +88,9 @@ pub fn build_console(
                             }
                         }
                         // server data
-                        "/getServerData" => {
+                        "/server" => {
                             // get server data
-                            match command_tx.send(vec!["getServerData".to_string()]).await {
+                            match command_tx.send(vec!["server".to_string()]).await {
                                 Ok(_) => {
                                     debug!("get server data");
                                 }
@@ -109,6 +107,86 @@ pub fn build_console(
                                 }
                             }
                         }
+                        // time
+                        "/time" => {
+                            // get time
+                            match command_tx.send(vec!["time".to_string()]).await {
+                                Ok(_) => {
+                                    debug!("get time");
+                                }
+                                Err(_) => {
+                                    info!("client already quit");
+                                }
+                            }
+                            match response_rx.recv().await {
+                                Some(res) => {
+                                    info!("time: {:?}", res);
+                                }
+                                None => {
+                                    info!("client already quit");
+                                }
+                            }
+                        }
+                        // tps
+                        "/tps" => {
+                            // get tps
+                            match command_tx.send(vec!["tps".to_string()]).await {
+                                Ok(_) => {
+                                    debug!("get tps");
+                                }
+                                Err(_) => {
+                                    info!("client already quit");
+                                }
+                            }
+                            match response_rx.recv().await {
+                                Some(res) => {
+                                    info!("tps: {:?}", res);
+                                }
+                                None => {
+                                    info!("client already quit");
+                                }
+                            }
+                        }
+                        // exp
+                        "/exp" => {
+                            // get exp
+                            match command_tx.send(vec!["exp".to_string()]).await {
+                                Ok(_) => {
+                                    debug!("get exp");
+                                }
+                                Err(_) => {
+                                    info!("client already quit");
+                                }
+                            }
+                            match response_rx.recv().await {
+                                Some(res) => {
+                                    info!("exp: {:?}", res);
+                                }
+                                None => {
+                                    info!("client already quit");
+                                }
+                            }
+                        }
+                        // health
+                        "/health" => {
+                            // get health
+                            match command_tx.send(vec!["health".to_string()]).await {
+                                Ok(_) => {
+                                    debug!("get health");
+                                }
+                                Err(_) => {
+                                    info!("client already quit");
+                                }
+                            }
+                            match response_rx.recv().await {
+                                Some(res) => {
+                                    info!("health: {:?}", res);
+                                }
+                                None => {
+                                    info!("client already quit");
+                                }
+                            }
+                        }
                         "" => {
                             // empty
                         }
@@ -116,12 +194,34 @@ pub fn build_console(
                             // help
                             info!("/quit: quit");
                             info!("/respawn: respawn");
-                            info!("/getPosition: get position");
-                            info!("/getServerData: get server data");
+                            info!("/position: get position");
+                            info!("/server: get server data");
+                            info!("/time: get time");
+                            info!("/tps: get tps");
+                            info!("/exp: get exp");
+                            info!("/health: get health");
+                            info!("chat message: send message");
+                            info!("//command: send command");
                         }
                         msg => {
                             if msg.starts_with('/') {
-                                info!("Unknown command: {}", msg);
+                                // 两个//
+                                if msg.starts_with("//") {
+                                    // send message
+                                    match command_tx
+                                        .send(vec!["command".to_string(), msg[2..].to_string()])
+                                        .await
+                                    {
+                                        Ok(_) => {
+                                            debug!("send command: {}", msg);
+                                        }
+                                        Err(_) => {
+                                            debug!("client already quit");
+                                        }
+                                    }
+                                } else {
+                                    info!("Unknown command: {}", msg);
+                                }
                             } else {
                                 // send message
                                 match command_tx
@@ -155,8 +255,6 @@ async fn reconnect_loop(command_tx: mpsc::Sender<Vec<String>>) -> bool {
         let mut input = String::new();
         match std::io::stdin().read_line(&mut input) {
             Ok(_) => {
-                // delete last line
-                print!("\x1b[1A\x1b[2K");
                 match input.trim() {
                     "/quit" => {
                         // quit

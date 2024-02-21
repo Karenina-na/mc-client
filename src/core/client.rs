@@ -8,7 +8,7 @@ use crate::core::parser::play::{change_difficulty, server_data, sync_player_posi
 use crate::itti::basis::ITTI;
 use crate::util;
 use log::{debug, error, info, warn};
-use msg::play::plugin_message;
+use msg::play::{chat_command, chat_message, plugin_message, respawn};
 use tokio::sync::mpsc::{Receiver, Sender};
 
 enum Status {
@@ -18,24 +18,37 @@ enum Status {
 }
 
 pub struct Client {
+    // tcp packet
     buffer: Option<Vec<u8>>,
     val: i32,
 
+    // player
     username: String,
     protocol_version: i32,
     uuid: Option<Vec<u8>>,
+    exp_bar: Option<f32>,
+    level: Option<i32>,
+    exp_level: Option<i32>,
+    health: Option<f32>,
+    food: Option<i32>,
+    saturation: Option<f32>,
 
+    // server
     threshold: Option<i32>,
-
+    compress: bool,
     difficulty: Option<String>,
     motor: Option<String>,
     icon: Option<Vec<u8>>,
     enforce_chat: Option<bool>,
 
+    // position
     position: Option<(f64, f64, f64, f32, f32)>,
 
-    compress: bool,
+    // time
+    time: Option<(i64, i64, i64)>,
+    tps: Option<f32>,
 
+    // status
     status: Status,
 }
 
@@ -48,6 +61,12 @@ impl Client {
             username,
             protocol_version,
             uuid: None,
+            exp_bar: None,
+            health: None,
+            food: None,
+            saturation: None,
+            level: None,
+            exp_level: None,
             threshold: None,
             difficulty: None,
             motor: None,
@@ -55,6 +74,8 @@ impl Client {
             enforce_chat: None,
             position: None,
             compress: false,
+            time: None,
+            tps: None,
             status: Status::HANDSHAKE,
         }
     }
@@ -525,6 +546,66 @@ impl Client {
                 let (data, is_overlay) = parser::play::system_chat_message::parse(packet);
                 info!("System chat message: {}, overlay: {}", data, is_overlay);
             }
+            mapper::UPDATE_TIME => {
+                // 0x5e
+                let (word_age, time_of_day) = parser::play::update_time::parse(packet);
+                let day = word_age / 24000;
+                // cal tps
+                match self.time {
+                    Some((last_word_age, last_time_of_day, last_day)) => {
+                        // 1 tick = 1/20 sec
+                        let tps = (word_age - last_word_age) as f32;
+                        match self.tps {
+                            Some(last_tps) => {
+                                self.tps = Some((last_tps + tps) / 2.0);
+                            }
+                            None => {
+                                self.tps = Some(tps);
+                            }
+                        }
+                    }
+                    None => {}
+                }
+                match self.tps {
+                    Some(tps) => {
+                        debug!(
+                            "Update time: word age: {}, day: {}, time of day: {}, TPS: {:.2}",
+                            word_age, day, time_of_day, tps
+                        );
+                    }
+                    None => {
+                        debug!(
+                            "Update time: word age: {}, day: {}, time of day: {}, TPS: None",
+                            word_age, day, time_of_day
+                        );
+                    }
+                }
+                self.time = Some((word_age, time_of_day, day));
+            }
+            mapper::SET_EXPERIENCE => {
+                // 0x56
+                let (exp_bar, level, exp_level) = parser::play::set_experience::parse(packet);
+                self.exp_bar = Some(exp_bar);
+                self.level = Some(level);
+                self.exp_level = Some(exp_level);
+                info!(
+                    "Set experience: exp bar: {}, level: {}, exp (level): {}",
+                    self.exp_bar.as_ref().unwrap(),
+                    self.level.as_ref().unwrap(),
+                    self.exp_level.as_ref().unwrap()
+                );
+            }
+            mapper::SET_HEALTH => {
+                // 0x57
+                let (health, food, saturation) = parser::play::set_health::parse(packet);
+                info!(
+                    "Set health: health: {}, food: {}, saturation: {}",
+                    health, food, saturation
+                );
+                self.health = Some(health);
+                self.food = Some(food);
+                self.saturation = Some(saturation);
+            }
             _ => {}
         }
     }
@@ -550,7 +631,7 @@ impl Client {
                     }
                 }
             }
-            "getPosition" => match response_tx.send(vec![self.get_position()]).await {
+            "position" => match response_tx.send(vec![self.get_position()]).await {
                 Ok(_) => {
                     debug!("Sent position");
                 }
@@ -558,7 +639,7 @@ impl Client {
                     error!("Failed to send position: {}", e.to_string());
                 }
             },
-            "getServerData" => match response_tx.send(vec![self.get_server_data()]).await {
+            "server" => match response_tx.send(vec![self.get_server_data()]).await {
                 Ok(_) => {
                     debug!("Sent server data");
                 }
@@ -577,6 +658,49 @@ impl Client {
                     }
                 }
             }
+            "command" => {
+                let response = self.chat_command(packet[1].clone());
+                match itti.send(response).await {
+                    Ok(_) => {
+                        debug!("Sent chat command: {}", packet[1]);
+                    }
+                    Err(e) => {
+                        error!("Failed to send chat command: {}", e.to_string());
+                    }
+                }
+            }
+            "time" => match response_tx.send(vec![self.get_time()]).await {
+                Ok(_) => {
+                    debug!("Sent time");
+                }
+                Err(e) => {
+                    error!("Failed to send time: {}", e.to_string());
+                }
+            },
+            "tps" => match response_tx.send(vec![self.get_tps()]).await {
+                Ok(_) => {
+                    debug!("Sent tps");
+                }
+                Err(e) => {
+                    error!("Failed to send tps: {}", e.to_string());
+                }
+            },
+            "exp" => match response_tx.send(vec![self.get_exp()]).await {
+                Ok(_) => {
+                    debug!("Sent exp");
+                }
+                Err(e) => {
+                    error!("Failed to send exp: {}", e.to_string());
+                }
+            },
+            "health" => match response_tx.send(vec![self.get_health()]).await {
+                Ok(_) => {
+                    debug!("Sent health");
+                }
+                Err(e) => {
+                    error!("Failed to send health: {}", e.to_string());
+                }
+            },
             _ => {
                 warn!("Unknown command: {}", packet[0]);
             }
@@ -615,12 +739,69 @@ impl Client {
     #[allow(unused_variables)]
     #[allow(unused)]
     pub fn respawn(&self) -> Vec<u8> {
-        msg::play::respawn::new(self.compress)
+        respawn::new(self.compress)
     }
 
     #[allow(unused_variables)]
     #[allow(unused)]
     pub fn chat_message(&self, msg: String) -> Vec<u8> {
-        msg::play::chat_message::new(msg, self.compress)
+        chat_message::new(msg, self.compress)
+    }
+
+    #[allow(unused_variables)]
+    #[allow(unused)]
+    pub fn chat_command(&self, command: String) -> Vec<u8> {
+        chat_command::new(command, self.compress)
+    }
+
+    #[allow(unused_variables)]
+    #[allow(unused)]
+    pub fn get_time(&self) -> String {
+        match self.time {
+            Some((word_age, time_of_day, day)) => {
+                format!(
+                    "word age: {}, day: {}, time of day: {}",
+                    word_age, day, time_of_day
+                )
+            }
+            _ => "No time".to_string(),
+        }
+    }
+
+    #[allow(unused_variables)]
+    #[allow(unused)]
+    pub fn get_tps(&self) -> String {
+        match self.tps {
+            Some(tps) => format!("TPS: {:.2}", tps),
+            _ => "No TPS".to_string(),
+        }
+    }
+
+    #[allow(unused_variables)]
+    #[allow(unused)]
+    pub fn get_exp(&self) -> String {
+        match (self.exp_bar, self.level, self.exp_level) {
+            (Some(exp_bar), Some(level), Some(exp_level)) => {
+                format!(
+                    "exp bar: {}, level: {}, exp (level): {}",
+                    exp_bar, level, exp_level
+                )
+            }
+            _ => "No exp".to_string(),
+        }
+    }
+
+    #[allow(unused_variables)]
+    #[allow(unused)]
+    pub fn get_health(&self) -> String {
+        match (self.health, self.food, self.saturation) {
+            (Some(health), Some(food), Some(saturation)) => {
+                format!(
+                    "health: {}, food: {}, saturation: {}",
+                    health, food, saturation
+                )
+            }
+            _ => "No health".to_string(),
+        }
     }
 }

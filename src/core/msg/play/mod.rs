@@ -1,3 +1,4 @@
+pub(crate) mod chat_command;
 pub(crate) mod chat_message;
 pub mod confirm_tp;
 pub mod keep_live;
