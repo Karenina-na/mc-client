@@ -269,7 +269,7 @@ async fn reconnect_loop(command_tx: mpsc::Sender<Vec<String>>) -> bool {
                         }
                         return false;
                     }
-                    "/reconnect" => {
+                    "/connect" => {
                         command_tx
                             .send(vec!["reconnect".to_string()])
                             .await
@@ -279,7 +279,7 @@ async fn reconnect_loop(command_tx: mpsc::Sender<Vec<String>>) -> bool {
                     "/help" => {
                         // help
                         info!("/quit: quit");
-                        info!("/reconnect: reconnect");
+                        info!("/connect: connect");
                     }
                     "" => {
                         // empty

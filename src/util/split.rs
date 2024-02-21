@@ -2,11 +2,15 @@ use crate::util;
 
 // split tcp packet
 #[allow(dead_code)]
-pub fn split_tcp_packet(packet: Vec<u8>) -> (Vec<Vec<u8>>, i32) {
+pub fn split_tcp_packet(packet: Vec<u8>) -> (Vec<Vec<u8>>, i32, Vec<u8>) {
     let mut result = Vec::new();
     let mut index = 0;
     let packet_len_all = packet.len();
     while index < packet_len_all {
+        // if not enough len for var_int
+        if packet_len_all - index <= 3 {
+            return (result, 0, packet[index..].to_vec());
+        }
         let var_int_num = get_var_int_num(packet[index..].to_vec(), 1);
         let packet_len =
             util::transfer_var::var_int2uint(packet[index..index + var_int_num[0]].to_vec())[0]
@@ -17,13 +21,13 @@ pub fn split_tcp_packet(packet: Vec<u8>) -> (Vec<Vec<u8>>, i32) {
             let packet_data = packet[index..].to_vec();
             let len = packet_data.len() as i32;
             result.push(packet_data);
-            return (result, packet_len as i32 - len);
+            return (result, packet_len as i32 - len, vec![]);
         }
         let packet_data = packet[index..index + packet_len].to_vec();
         result.push(packet_data);
         index += packet_len;
     }
-    (result, 0)
+    (result, 0, vec![])
 }
 
 // split packet
@@ -96,7 +100,7 @@ mod tests {
             0x1d, 0x14, 0x78, 0x9c, 0xcb, 0x66, 0x14, 0xcc, 0xcd, 0xcc, 0x4b, 0x4d, 0x2e, 0x4a,
             0x4c, 0x2b, 0xb1, 0x2a, 0x4b, 0xcc, 0xcb, 0xcc, 0xc9, 0x49, 0x04, 0x00, 0x47,
         ];
-        let (res, len) = split_tcp_packet(packet);
+        let (res, len, last) = split_tcp_packet(packet);
         assert_eq!(res.len(), 5);
         assert_eq!(
             res[0],
@@ -138,8 +142,16 @@ mod tests {
             0x4c, 0x2b, 0xb1, 0x2a, 0x4b, 0xcc, 0xcb, 0xcc, 0xc9, 0x49, 0x04, 0x00, 0x47, 0xab,
             0x07, 0x58,
         ];
-        let (_, len) = split_tcp_packet(packet);
+        let (_, len, _) = split_tcp_packet(packet);
         assert_eq!(len, 0);
+        let packet = vec![
+            // one
+            0x0a, 0x52, 0xd2, 0x06, 0x09, 0x03, 0x00, 0x00, 0x00, 0x00, 0xff, // two
+            0x11, 0x5e,
+        ];
+        let (_, len, res) = split_tcp_packet(packet);
+        assert_eq!(len, 0);
+        assert_eq!(res, vec![0x11, 0x5e]);
     }
 
     #[test]

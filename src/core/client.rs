@@ -138,6 +138,14 @@ impl Client {
         self.position = None;
         self.compress = false;
         self.status = Status::HANDSHAKE;
+        self.time = None;
+        self.tps = None;
+        self.exp_bar = None;
+        self.level = None;
+        self.exp_level = None;
+        self.health = None;
+        self.food = None;
+        self.saturation = None;
     }
 
     async fn start_listen(
@@ -164,6 +172,7 @@ impl Client {
                         info!("Server closed");
                         break;
                     }
+
                     // if last pkt is not complete
                     if self.val != 0 {
                         if self.val > packet.len() as i32 { // more packet
@@ -180,13 +189,26 @@ impl Client {
                         self.buffer = None;
                         self.val = 0;
                         self.handle_packet(buffer, itti).await;
+
+                    }else if self.buffer.is_some() {
+                        // not enough length for var int
+                        let mut buffer = self.buffer.clone().unwrap();
+                        buffer.extend(packet.clone());
+                        self.buffer = None;
+                        packet = buffer;
                     }
+
                     // more packet
-                    let (mut packets, val) = util::split::split_tcp_packet(packet);
+                    let (mut packets, val, res) = util::split::split_tcp_packet(packet);
                     if val != 0 {
                         self.val = val;
                         self.buffer = Some(packets.pop().unwrap());
+
+                    }else if res.len() != 0 {
+                        // handle not enough length for var int
+                        self.buffer = Some(res);
                     }
+
                     // handle packets
                     for p in packets {
                         self.handle_packet(p, itti).await;
