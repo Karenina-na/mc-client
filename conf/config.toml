@@ -13,4 +13,4 @@ console_client_buffer.command = 64  # 控制台命令缓冲区大小
 console_client_buffer.response = 64  # 控制台响应缓冲区大小
 
 [log]
-log_level = "info"  # 日志级别
+log_level = "debug"  # 日志级别

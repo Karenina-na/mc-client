@@ -444,6 +444,7 @@ impl Client {
             mapper::KEEP_LIVE => {
                 // 0x23
                 let id = parser::play::keep_live::parse(packet);
+                debug!("Keep live: {:?}", id);
                 let response = msg::play::keep_live::new(id.clone(), self.compress);
                 match itti.send(response).await {
                     Ok(_) => {
@@ -453,7 +454,6 @@ impl Client {
                         warn!("Failed to send keep live response: {}", e.to_string());
                     }
                 }
-                debug!("Keep live: {:?}", id);
             }
             mapper::SERVER_DATA => {
                 // 0x45

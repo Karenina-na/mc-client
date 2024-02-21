@@ -41,6 +41,8 @@ pub fn build_console(
             let mut input = String::new();
             match std::io::stdin().read_line(&mut input) {
                 Ok(_) => {
+                    // delete last line
+                    print!("\x1b[1A\x1b[2K");
                     match input.trim() {
                         "/quit" => {
                             // quit
@@ -67,7 +69,7 @@ pub fn build_console(
                                 }
                             }
                         }
-                        // console
+                        // position
                         "/getPosition" => {
                             // get position
                             match command_tx.send(vec!["getPosition".to_string()]).await {
@@ -153,6 +155,8 @@ async fn reconnect_loop(command_tx: mpsc::Sender<Vec<String>>) -> bool {
         let mut input = String::new();
         match std::io::stdin().read_line(&mut input) {
             Ok(_) => {
+                // delete last line
+                print!("\x1b[1A\x1b[2K");
                 match input.trim() {
                     "/quit" => {
                         // quit
@@ -192,6 +196,7 @@ async fn reconnect_loop(command_tx: mpsc::Sender<Vec<String>>) -> bool {
                 continue;
             }
         }
+        debug!("client not connect, please input /reconnect");
     }
     true
 }
