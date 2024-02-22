@@ -12,17 +12,20 @@ description = "A simple Minecraft client written in Rust."
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1.36.0", features = ["full"] }
 lazy_static = "1.4.0"
 log = "0.4.20"
 env_logger = "0.11.2"
 flate2 = "1.0.28"
 toml = "0.8.10"
-serde = { version = "1.0.130", features = ["derive"] }
+serde = { version = "1.0.130", features = ["default", "derive"] }
 chrono = "0.4.19"
 prettytable-rs = "0.10.0"
-reqwest = { version = "0.11.24", features = ["blocking", "json"] }
+reqwest = { version = "0.11.24", features = ["default", "json"] }
 serde_json = "1.0.114"
+indicatif = "0.17.8"
+validator = { version = "0.16.1", features = ["derive"] }
+regex = "1.10.3"
 
 [[bin]]
 name = "mc-client"
