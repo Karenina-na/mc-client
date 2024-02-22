@@ -38,7 +38,7 @@ async fn main() {
                 "You are using offline login (username: {})",
                 config.general.account.username
             );
-            client = Client::new(config.general.account.username, 763);
+            client = Client::new(config.general.account.username, 763, config.general.lang);
         }
         "" => {
             // interactive login
@@ -64,7 +64,7 @@ async fn main() {
                 error!("login failed");
                 exit(0);
             }
-            client = Client::new(name.clone(), 763);
+            client = Client::new(name.clone(), 763, config.general.lang);
             info!(
                 "login {} using {}({}) success",
                 config.general.auth_server.host.clone(),
@@ -86,7 +86,7 @@ async fn main() {
                 error!("login failed");
                 exit(0);
             }
-            client = Client::new(name.clone(), 763);
+            client = Client::new(name.clone(), 763, config.general.lang);
             info!(
                 "login {} using {}({}) success",
                 config.general.auth_server.host.clone(),

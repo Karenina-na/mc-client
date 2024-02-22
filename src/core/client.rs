@@ -40,6 +40,7 @@ pub struct Client {
     motor: Option<String>,
     icon: Option<Vec<u8>>,
     enforce_chat: Option<bool>,
+    lang: String,
 
     // position
     position: Option<(f64, f64, f64, f32, f32)>,
@@ -54,7 +55,7 @@ pub struct Client {
 
 //  base
 impl Client {
-    pub fn new(username: String, protocol_version: i32) -> Client {
+    pub fn new(username: String, protocol_version: i32, lang: String) -> Client {
         Client {
             buffer: None,
             val: 0,
@@ -71,6 +72,7 @@ impl Client {
             difficulty: None,
             motor: None,
             icon: None,
+            lang,
             enforce_chat: None,
             position: None,
             compress: false,
@@ -557,7 +559,7 @@ impl Client {
                         }
                         // send client information
                         let response = msg::play::client_information::new(
-                            "en_US".to_string(),
+                            self.lang.clone(),
                             8,
                             0,
                             true,
