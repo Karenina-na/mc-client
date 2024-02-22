@@ -10,6 +10,8 @@ mod config;
 mod core;
 mod itti;
 mod util;
+mod yggdrasil;
+
 #[tokio::main]
 async fn main() {
     // config
