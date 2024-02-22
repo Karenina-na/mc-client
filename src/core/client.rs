@@ -112,7 +112,7 @@ impl Client {
         }
 
         // Send login start
-        let login_start = login_start::new(self.username.clone());
+        let login_start = login_start::new(self.username.clone(), vec![]);
         match itti.send(login_start).await {
             Ok(_) => {
                 debug!("Sent login start");
