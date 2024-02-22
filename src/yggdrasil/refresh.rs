@@ -6,64 +6,71 @@ use serde_json::json;
 pub struct Response {
     #[serde(rename = "accessToken")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    access_token: Option<String>,
+    pub access_token: Option<String>,
 
     #[serde(rename = "clientToken")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    client_token: Option<String>,
+    pub client_token: Option<String>,
 
     #[serde(rename = "availableProfiles")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    available_profiles: Option<Vec<AvailableProfiles>>,
+    pub available_profiles: Option<Vec<AvailableProfiles>>,
 
     #[serde(rename = "user")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    user: Option<User>,
+    pub user: Option<User>,
+
+    #[serde(rename = "selectedProfile")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub selected_profile: Option<AvailableProfiles>,
 
     #[serde(rename = "error")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
+    pub error: Option<String>,
 
     #[serde(rename = "errorMessage")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    error_message: Option<String>,
+    pub error_message: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct AvailableProfiles {
     #[serde(rename = "id")]
-    id: String,
+    pub id: String,
 
     #[serde(rename = "name")]
-    name: String,
+    pub name: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct User {
     #[serde(rename = "id")]
-    id: String,
+    pub id: String,
 
     #[serde(rename = "properties")]
-    properties: Vec<u8>,
+    pub properties: Vec<u8>,
 }
+
 pub async fn send(
     url: String,
-    username: String,
-    password: String,
+    access_token: String,
+    client_token: String,
     request_user: bool,
+    select_name: String,
+    select_id: String,
 ) -> Result<Response, String> {
     let client: Client = Client::new();
-    let url = format!("https://{}/api/yggdrasil/authserver/authenticate", url);
+    let url = format!("https://{}/api/yggdrasil/authserver/refresh", url);
     match client
         .post(url)
         .json(&json!({
-            "agent": {
-                "name": "Minecraft",
-                "version": 1
-            },
-            "username": username,
-            "password": password,
-            "requestUser": request_user
+            "accessToken": access_token,
+            "clientToken": client_token,
+            "requestUser": request_user,
+            "selectedProfile": {
+                "id": select_id,
+                "name": select_name
+            }
         }))
         .send()
         .await
@@ -83,9 +90,11 @@ mod tests {
     async fn test_send() {
         let response = send(
             "littleskin.cn".to_string(),
-            "weizixiang0@outlook.com".to_string(),
+            "xxx".to_string(),
             "xxx".to_string(),
             true,
+            "xxx".to_string(),
+            "xxx".to_string(),
         )
         .await;
         match response {
@@ -94,13 +103,14 @@ mod tests {
                 assert_eq!(response.client_token, None);
                 assert_eq!(response.available_profiles, None);
                 assert_eq!(response.user, None);
+                assert_eq!(response.selected_profile, None);
                 assert_eq!(
                     response.error,
                     Some("ForbiddenOperationException".to_string())
                 );
                 assert_eq!(
                     response.error_message,
-                    Some("输入的邮箱与密码不匹配".to_string())
+                    Some("无效的 AccessToken，请重新登录".to_string())
                 );
             }
             Err(e) => {
