@@ -1,10 +1,10 @@
 use crate::core::client::Client;
-use crate::core::console;
 use crate::yggdrasil::refresh;
 use config::factory::Config;
+use console::style;
+use dialoguer::{FuzzySelect, Password};
 use env_logger::{Builder, Target};
 use log::{debug, error, info, warn};
-use std::io;
 use std::process::exit;
 use tokio::sync::mpsc;
 use yggdrasil::authenticate;
@@ -38,26 +38,32 @@ async fn main() {
                 "You are using offline login (username: {})",
                 config.general.account.username
             );
+            println!(
+                "You are using offline login (username: {})",
+                style(config.general.account.username.clone()).yellow(),
+            );
             client = Client::new(config.general.account.username, 763, config.general.lang);
         }
         "" => {
             // interactive login
             info!(
-                "You are using interactive login (username: {}), please input your password:",
+                "You are using interactive login (email: {}), please input your password:",
                 config.general.account.username
             );
-            let mut password = String::new();
-            match io::stdin().read_line(&mut password) {
-                Ok(_) => {
-                    password = password.trim().to_string();
-                }
+            let password = match Password::new()
+                .with_prompt(format!(
+                    "You are using interactive login (email: {}), please input your password",
+                    style(config.general.account.username.clone()).yellow()
+                ))
+                .interact()
+            {
+                Ok(p) => p,
                 Err(e) => {
                     error!("read line failed: {}", e);
                     exit(0);
                 }
-            }
+            };
             let username = config.general.account.username.clone();
-            let password = password.to_string();
             let url = config.general.auth_server.host.clone();
             let name = yggdrasil_login(url, username, password).await;
             if name == "" {
@@ -70,6 +76,13 @@ async fn main() {
                 config.general.auth_server.host.clone(),
                 config.general.account.username.clone(),
                 name
+            );
+            println!(
+                "login {} using {}({}) {}",
+                style(config.general.auth_server.host.clone()).cyan(),
+                style(config.general.account.username.clone()).yellow(),
+                style(name).blue(),
+                style("success").green(),
             );
         }
         password => {
@@ -78,6 +91,10 @@ async fn main() {
                 "You are using password login (username: {}), password: *******",
                 config.general.account.username,
             );
+            println!(
+                "You are using password login (username: {}), password: *******",
+                style(config.general.account.username.clone()).yellow(),
+            );
             let username = config.general.account.username.clone();
             let password = password.to_string();
             let url = config.general.auth_server.host.clone();
@@ -92,6 +109,13 @@ async fn main() {
                 config.general.auth_server.host.clone(),
                 config.general.account.username.clone(),
                 name
+            );
+            println!(
+                "login {} using {}({}) {}",
+                style(config.general.auth_server.host.clone()).cyan(),
+                style(config.general.account.username.clone()).yellow(),
+                style(name).blue(),
+                style("success").green(),
             );
         }
     };
@@ -108,6 +132,8 @@ async fn main() {
         mpsc::channel(config.buffer.console_client_buffer.command as usize); // command channel (Console -> Client)
     let (response_tx, response_rx) =
         mpsc::channel(config.buffer.console_client_buffer.response as usize); // response channel (Client -> Console)
+    let (msg_tx, msg_rx) =
+        mpsc::channel(16); // message channel (Client -> Display)
 
     // start console
     match response_tx.send(vec!["reconnect".to_string()]).await {
@@ -117,7 +143,7 @@ async fn main() {
             exit(0)
         }
     }
-    console::build_console(command_tx, response_rx);
+    core::console::build_console(command_tx, response_rx);
 
     // start client
     server_loop(&mut itti, &mut client, &mut command_rx, &response_tx).await;
@@ -155,29 +181,45 @@ async fn yggdrasil_login(url: String, username: String, password: String) -> Str
                         debug!("client_token: {}", client_token);
                         debug!("user: {:?}", user);
                         info!("Available profiles:");
+                        println!("Available profiles: ");
                         for profile in &available_profiles {
                             info!("id: {}, name: {}", profile.id.clone(), profile.name.clone());
+                            println!(
+                                "id: {}, name: {}",
+                                style(profile.id.clone()).blue(),
+                                style(profile.name.clone()).green()
+                            );
                         }
-                        let mut select_name = String::new();
+                        let select_name;
                         let select_id;
-                        'outer: loop {
-                            // chose profile
-                            info!("Please chose a profile: (name)");
-                            match io::stdin().read_line(&mut select_name) {
-                                Ok(_) => {
-                                    select_name = select_name.trim().to_string();
-                                    for profile in &available_profiles {
-                                        if profile.name == select_name {
-                                            select_id = profile.id.clone();
-                                            break 'outer;
-                                        }
-                                    }
-                                    error!("login in {} failed: profile not found", url);
+                        loop {
+                            match FuzzySelect::with_theme(
+                                &dialoguer::theme::ColorfulTheme::default(),
+                            )
+                            .with_prompt(format!(
+                                "Please chose a profile to login in {}",
+                                style(url.clone()).cyan()
+                            ))
+                            .items(
+                                &available_profiles
+                                    .iter()
+                                    .map(|p| p.name.clone())
+                                    .collect::<Vec<String>>(),
+                            )
+                            .interact()
+                            {
+                                Ok(i) => {
+                                    select_name = available_profiles[i].name.clone();
+                                    select_id = available_profiles[i].id.clone();
+                                    break;
                                 }
-                                Err(e) => {
-                                    error!("read line failed: {}", e);
+                                Err(_) => {
+                                    error!(
+                                        "login in {} failed: profile not found",
+                                        style(url.clone()).cyan(),
+                                    );
                                 }
-                            }
+                            };
                         }
                         // send refresh to select profile
                         match refresh::send(
@@ -236,13 +278,13 @@ async fn server_loop(
     command_rx: &mut mpsc::Receiver<Vec<String>>,
     response_tx: &mpsc::Sender<Vec<String>>,
 ) {
-    loop {
+    'outer: loop {
         // reconnect
         match response_tx.send(vec!["reconnect".to_string()]).await {
             Ok(_) => {}
             Err(_) => {
                 debug!("console quit");
-                exit(0)
+                break;
             }
         }
         loop {
@@ -250,7 +292,10 @@ async fn server_loop(
                 Some(command) => {
                     if command.len() == 0 {
                         debug!("quit");
-                        exit(0);
+
+                        // stop
+                        itti.stop().await;
+                        break 'outer;
                     }
                     if command == vec!["reconnect"] {
                         break;
@@ -260,7 +305,10 @@ async fn server_loop(
                 }
                 None => {
                     warn!("client already quit");
-                    exit(0);
+
+                    // stop
+                    itti.stop().await;
+                    break 'outer;
                 }
             }
         }
@@ -280,4 +328,6 @@ async fn server_loop(
         // stop
         itti.stop().await;
     }
+
+    println!("bye!");
 }

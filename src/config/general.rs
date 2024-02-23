@@ -16,7 +16,6 @@ pub struct General {
 
 #[derive(Deserialize, Validate)]
 pub struct Account {
-    #[validate(length(min = 3, max = 20))]
     pub username: String,
     pub password: String,
 }
@@ -38,5 +37,6 @@ pub struct Server {
 }
 
 lazy_static! {
-    static ref IP_DOMAIN_REGEX: regex::Regex = regex::Regex::new(r"^[a-zA-Z0-9.-]+(:[0-9]+)?").unwrap();
+    static ref IP_DOMAIN_REGEX: regex::Regex =
+        regex::Regex::new(r"^[a-zA-Z0-9.-]+(:[0-9]+)?").unwrap();
 }

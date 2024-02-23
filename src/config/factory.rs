@@ -1,4 +1,3 @@
-
 use crate::config::buffer::Buffer;
 use crate::config::general::General;
 use crate::config::log::Log;
@@ -28,7 +27,7 @@ impl Config {
                         Ok(_) => Ok(config),
                         Err(e) => Err(format!("config.toml validate failed: {}", e.to_string())),
                     }
-                },
+                }
                 Err(e) => Err(format!("config.toml parse failed {}", e.to_string())),
             },
             Err(e) => Err(format!("config.toml read failed: {}", e.to_string())),
@@ -57,7 +56,9 @@ mod tests {
     #[tokio::test]
     async fn test_load_validate() {
         let path = env::current_dir().unwrap().join("conf/config.toml");
-        let config = Config::load(path.to_str().unwrap().to_string()).await.unwrap();
+        let config = Config::load(path.to_str().unwrap().to_string())
+            .await
+            .unwrap();
         match config.validate() {
             Ok(_) => assert!(true),
             Err(e) => {

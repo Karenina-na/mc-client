@@ -20,6 +20,6 @@ pub struct ConsoleClientBuffer {
     pub response: i64,
 }
 
-lazy_static!{
+lazy_static! {
     static ref IS_DIGIT: regex::Regex = regex::Regex::new(r"^\d+$").unwrap();
 }
