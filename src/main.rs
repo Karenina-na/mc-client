@@ -1,9 +1,10 @@
 use crate::core::client::Client;
 use crate::yggdrasil::refresh;
+use chrono::Local;
 use config::factory::Config;
 use console::style;
 use dialoguer::{FuzzySelect, Password};
-use env_logger::{Builder, Target};
+use env_logger::Target::Pipe;
 use log::{debug, error, info, warn};
 use std::process::exit;
 use tokio::sync::mpsc;
@@ -158,8 +159,68 @@ async fn main() {
 
 fn init_log(level: String) {
     std::env::set_var("RUST_LOG", level);
-    let mut builder = Builder::from_default_env();
-    builder.target(Target::Stdout).init();
+    // create log
+    match std::fs::create_dir_all("log") {
+        Ok(_) => {}
+        Err(e) => {
+            error!("create log directory failed: {}", e);
+            exit(0);
+        }
+    }
+    match std::fs::create_dir_all(format!(
+        "log/{}",
+        Local::now().format("%Y-%m-%d").to_string()
+    )) {
+        Ok(_) => {}
+        Err(e) => {
+            error!("create log directory failed: {}", e);
+            exit(0);
+        }
+    }
+
+    // debug and info to console
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Debug)
+        .target(env_logger::Target::Stderr);
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Info)
+        .target(env_logger::Target::Stderr);
+
+    // warn
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Warn)
+        .target(Pipe(Box::new(
+            std::fs::OpenOptions::new()
+                .create(true)
+                .write(true)
+                .truncate(true)
+                // log/yy-mm-dd/warn.log
+                .open(format!(
+                    "log/{}/{}.log",
+                    Local::now().format("%Y-%m-%d").to_string(),
+                    log::Level::Warn.to_string().to_lowercase()
+                ))
+                .unwrap(),
+        ) as Box<dyn std::io::Write + Send>));
+
+    // error
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Error)
+        .target(Pipe(Box::new(
+            std::fs::OpenOptions::new()
+                .create(true)
+                .write(true)
+                .truncate(true)
+                // log/yy-mm-dd/error.log
+                .open(format!(
+                    "log/{}/{}.log",
+                    Local::now().format("%Y-%m-%d").to_string(),
+                    log::Level::Error.to_string().to_lowercase()
+                ))
+                .unwrap(),
+        ) as Box<dyn std::io::Write + Send>));
+
+    env_logger::init();
 }
 
 async fn yggdrasil_login(url: String, username: String, password: String) -> String {

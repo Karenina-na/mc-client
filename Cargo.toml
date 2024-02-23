@@ -15,7 +15,7 @@ description = "A simple Minecraft client written in Rust."
 tokio = { version = "1.36.0", features = ["full"] }
 lazy_static = "1.4.0"
 log = "0.4.20"
-env_logger = "0.11.2"
+env_logger = { version = "0.11.2", features = ["default",  "color", "auto-color"] }
 flate2 = "1.0.28"
 toml = "0.8.10"
 serde = { version = "1.0.130", features = ["default", "derive"] }
@@ -28,6 +28,7 @@ regex = "1.10.3"
 indicatif = "0.17.8"
 console = { version = "0.15.8", features = ["default", "unicode-width", "windows-console-colors", "ansi-parsing"]}
 dialoguer = { version = "0.11.0", features = ["default", "fuzzy-select", "history"]}
+crossterm = {version = "0.27.0", features = ["default"]}
 
 [[bin]]
 name = "mc-client"

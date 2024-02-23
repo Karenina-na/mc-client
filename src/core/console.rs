@@ -1,8 +1,10 @@
+use std::os::windows::prelude::AsHandle;
 use console::{style, Term};
-use dialoguer::{BasicHistory, FuzzySelect, Input};
+use dialoguer::FuzzySelect;
 use log::{debug, error, info, warn};
 use prettytable::format::consts::FORMAT_BOX_CHARS;
 use prettytable::{row, Table};
+use tokio::io::{AsyncBufReadExt};
 use tokio::sync::mpsc;
 
 pub fn build_console(
@@ -11,7 +13,6 @@ pub fn build_console(
 ) {
     // console -- io channel
     tokio::spawn(async move {
-        let mut history = BasicHistory::new().max_entries(64).no_duplicates(true);
         loop {
             // not connect
             let result = response_rx.try_recv();
@@ -45,18 +46,16 @@ pub fn build_console(
             }
             // connect
             tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-            let command =
-                match Input::<String>::with_theme(&dialoguer::theme::ColorfulTheme::default())
-                    .with_prompt("You")
-                    .history_with(&mut history)
-                    .interact_text()
-                {
-                    Ok(command) => command,
-                    Err(_) => {
-                        info!("console quit");
-                        break;
-                    }
-                };
+            let mut command = String::new();
+            match tokio::io::BufReader::new(tokio::io::stdin()).read_line(&mut command).await {
+                Ok(_) => {}
+                Err(_) => {
+                    info!("client already quit");
+                    println!("client already {}", style("quit").red());
+                    break;
+                }
+            }
+            // command control
             match command.trim() {
                 "/quit" => {
                     // quit
@@ -229,6 +228,7 @@ pub fn build_console(
                         }
                     }
                 }
+                "" => {}
                 msg => {
                     if msg.starts_with('/') {
                         // 两个//
