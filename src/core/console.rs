@@ -1,5 +1,5 @@
 use console::{style, Term};
-use dialoguer::{BasicHistory, FuzzySelect, Input, Sort};
+use dialoguer::{BasicHistory, FuzzySelect, Input};
 use log::{debug, error, info, warn};
 use prettytable::format::consts::FORMAT_BOX_CHARS;
 use prettytable::{row, Table};
@@ -28,6 +28,7 @@ pub fn build_console(
                                 }
                             }
                         }
+                        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                     } else {
                         // quit
                         break;
@@ -43,10 +44,10 @@ pub fn build_console(
                 }
             }
             // connect
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
             let command =
                 match Input::<String>::with_theme(&dialoguer::theme::ColorfulTheme::default())
                     .with_prompt("You")
-                    .default("/help".to_string())
                     .history_with(&mut history)
                     .interact_text()
                 {
@@ -63,6 +64,7 @@ pub fn build_console(
                         Ok(_) => {}
                         Err(_) => {
                             info!("client already quit");
+                            println!("client already {}", style("quit").red());
                         }
                     }
                     println!("console {}", style("quit").red());
@@ -71,9 +73,12 @@ pub fn build_console(
                 "/respawn" => {
                     // respawn
                     match command_tx.send(vec!["respawn".to_string()]).await {
-                        Ok(_) => {}
+                        Ok(_) => {
+                            println!("You {}", style("respawn").green());
+                        }
                         Err(_) => {
                             info!("client already quit");
+                            println!("client already {}", style("quit").red());
                         }
                     }
                 }
@@ -83,15 +88,17 @@ pub fn build_console(
                         Ok(_) => {}
                         Err(_) => {
                             info!("client already quit");
+                            println!("client already {}", style("quit").red());
                         }
                     }
                     match response_rx.recv().await {
                         Some(res) => {
                             info!("position: {:?}", res);
-                            println!("position: {:?}", res);
+                            println!("{}", res[0]);
                         }
                         None => {
                             info!("client already quit");
+                            println!("client already {}", style("quit").red());
                         }
                     }
                 }
@@ -101,15 +108,17 @@ pub fn build_console(
                         Ok(_) => {}
                         Err(_) => {
                             info!("client already quit");
+                            println!("client already {}", style("quit").red());
                         }
                     }
                     match response_rx.recv().await {
                         Some(res) => {
                             info!("server data: {:?}", res);
-                            println!("server data: {:?}", res);
+                            println!("{}", res[0]);
                         }
                         None => {
                             info!("client already quit");
+                            println!("client already {}", style("quit").red());
                         }
                     }
                 }
@@ -119,15 +128,17 @@ pub fn build_console(
                         Ok(_) => {}
                         Err(_) => {
                             info!("client already quit");
+                            println!("client already {}", style("quit").red());
                         }
                     }
                     match response_rx.recv().await {
                         Some(res) => {
                             info!("time: {:?}", res);
-                            println!("time: {:?}", res);
+                            println!("{}", res[0]);
                         }
                         None => {
                             info!("client already quit");
+                            println!("client already {}", style("quit").red());
                         }
                     }
                 }
@@ -137,15 +148,17 @@ pub fn build_console(
                         Ok(_) => {}
                         Err(_) => {
                             info!("client already quit");
+                            println!("client already {}", style("quit").red());
                         }
                     }
                     match response_rx.recv().await {
                         Some(res) => {
                             info!("tps: {:?}", res);
-                            println!("tps: {:?}", res);
+                            println!("{}", res[0]);
                         }
                         None => {
                             info!("client already quit");
+                            println!("client already {}", style("quit").red());
                         }
                     }
                 }
@@ -155,15 +168,17 @@ pub fn build_console(
                         Ok(_) => {}
                         Err(_) => {
                             info!("client already quit");
+                            println!("client already {}", style("quit").red());
                         }
                     }
                     match response_rx.recv().await {
                         Some(res) => {
                             info!("exp: {:?}", res);
-                            println!("exp: {:?}", res);
+                            println!("{}", res[0]);
                         }
                         None => {
                             info!("client already quit");
+                            println!("client already {}", style("quit").red());
                         }
                     }
                 }
@@ -173,15 +188,17 @@ pub fn build_console(
                         Ok(_) => {}
                         Err(_) => {
                             info!("client already quit");
+                            println!("client already {}", style("quit").red());
                         }
                     }
                     match response_rx.recv().await {
                         Some(res) => {
                             info!("health: {:?}", res);
-                            println!("health: {:?}", res);
+                            println!("{}", res[0]);
                         }
                         None => {
                             info!("client already quit");
+                            println!("client already {}", style("quit").red());
                         }
                     }
                 }
@@ -208,7 +225,7 @@ pub fn build_console(
                     match Term::stdout().clear_screen() {
                         Ok(_) => {}
                         Err(_) => {
-                            info!("client already quit");
+                            warn!("clear screen failed");
                         }
                     }
                 }
@@ -227,6 +244,7 @@ pub fn build_console(
                                 }
                             }
                         } else {
+                            println!("{}: {}", style("Unknown command").red(), msg);
                             info!("Unknown command: {}", msg);
                         }
                     } else {

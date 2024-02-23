@@ -7,6 +7,7 @@ use crate::core::parser::mapper;
 use crate::core::parser::play::{change_difficulty, server_data, sync_player_position};
 use crate::itti::basis::ITTI;
 use crate::util;
+use console::style;
 use log::{debug, error, info, warn};
 use msg::play::{chat_command, chat_message, plugin_message, respawn};
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -86,6 +87,7 @@ impl Client {
         itti: &mut ITTI,
         command_rx: &mut Receiver<Vec<String>>,
         response_tx: &Sender<Vec<String>>,
+        msg_tx: &Sender<Vec<String>>,
     ) -> () {
         // start itti
         match itti.build().await {
@@ -125,7 +127,8 @@ impl Client {
         }
 
         // Start listening
-        self.start_listen(itti, command_rx, response_tx).await;
+        self.start_listen(itti, command_rx, response_tx, msg_tx)
+            .await;
     }
 
     pub fn reset(&mut self) {
@@ -155,6 +158,7 @@ impl Client {
         itti: &mut ITTI,
         command_rx: &mut Receiver<Vec<String>>,
         response_tx: &Sender<Vec<String>>,
+        msg_tx: &Sender<Vec<String>>,
     ) {
         loop {
             tokio::select! {
@@ -190,7 +194,7 @@ impl Client {
                         packet = packet[self.val as usize..].to_vec();
                         self.buffer = None;
                         self.val = 0;
-                        self.handle_packet(buffer, itti).await;
+                        self.handle_packet(buffer, itti, msg_tx).await;
 
                     }else if self.buffer.is_some() {
                         // not enough length for var int
@@ -213,7 +217,7 @@ impl Client {
 
                     // handle packets
                     for p in packets {
-                        self.handle_packet(p, itti).await;
+                        self.handle_packet(p, itti, msg_tx).await;
                     }
                 }
             }
@@ -223,7 +227,12 @@ impl Client {
 
 //  handle packet
 impl Client {
-    pub async fn handle_packet(&mut self, packet: Vec<u8>, itti: &ITTI) {
+    pub async fn handle_packet(
+        &mut self,
+        packet: Vec<u8>,
+        itti: &ITTI,
+        msg_tx: &Sender<Vec<String>>,
+    ) {
         match self.status {
             Status::HANDSHAKE => {
                 // check len
@@ -317,7 +326,8 @@ impl Client {
                         );
                         return;
                     }
-                    self.handle_play_packet(packet, packet_id as u8, itti).await;
+                    self.handle_play_packet(packet, packet_id as u8, itti, msg_tx)
+                        .await;
                 } else if packet_id == -1 {
                     // compress
                     // check len
@@ -336,7 +346,8 @@ impl Client {
                         // len < threshold
                         let packet_id = packet[0];
                         let packet = packet[1..].to_vec();
-                        self.handle_play_packet(packet, packet_id, itti).await;
+                        self.handle_play_packet(packet, packet_id, itti, msg_tx)
+                            .await;
                         return;
                     }
 
@@ -359,7 +370,8 @@ impl Client {
                     }
                     let packet_id = packet[0];
                     let packet = packet[1..].to_vec();
-                    self.handle_play_packet(packet, packet_id, itti).await;
+                    self.handle_play_packet(packet, packet_id, itti, msg_tx)
+                        .await;
                 }
             }
         }
@@ -474,7 +486,13 @@ impl Client {
     }
 
     #[allow(unused_variables)]
-    async fn handle_play_packet(&mut self, packet: Vec<u8>, packet_id: u8, itti: &ITTI) {
+    async fn handle_play_packet(
+        &mut self,
+        packet: Vec<u8>,
+        packet_id: u8,
+        itti: &ITTI,
+        msg_tx: &Sender<Vec<String>>,
+    ) {
         match packet_id {
             mapper::CHANGE_DIFFICULTY => {
                 // 0x0d
@@ -484,6 +502,11 @@ impl Client {
                     "Difficulty: {}, lock: {}",
                     self.difficulty.as_ref().unwrap(),
                     lock
+                );
+                println!(
+                    "Server difficulty: {}, is locked: {}",
+                    style(self.difficulty.as_ref().unwrap()).green(),
+                    style(lock).green()
                 );
             }
             mapper::KEEP_LIVE => {
@@ -502,7 +525,8 @@ impl Client {
             }
             mapper::SERVER_DATA => {
                 // 0x45
-                let (moto, icon, enforce_chat) = server_data::parse(packet);
+                let (mut moto, icon, enforce_chat) = server_data::parse(packet);
+                moto = moto.replace("{\"text\":\"", "").replace("\"}", "");
                 self.motor = Some(moto);
                 self.icon = Some(icon);
                 self.enforce_chat = Some(enforce_chat);
@@ -511,6 +535,7 @@ impl Client {
                     self.motor.as_ref().unwrap(),
                     self.enforce_chat.as_ref().unwrap()
                 );
+                println!("moto: {}", style(self.motor.as_ref().unwrap()).white(),)
             }
             mapper::SYNC_PLAYER_POSITION => {
                 // 0x3c
@@ -586,6 +611,14 @@ impl Client {
                 // 0x64
                 let (data, is_overlay) = parser::play::system_chat_message::parse(packet);
                 info!("System chat message: {}, overlay: {}", data, is_overlay);
+                match msg_tx.send(vec![data]).await {
+                    Ok(_) => {
+                        debug!("Sent system chat message");
+                    }
+                    Err(e) => {
+                        warn!("Failed to send system chat message: {}", e.to_string());
+                    }
+                }
             }
             mapper::DISGUISED_CHAT_MESSAGE => {
                 // 0x1b
@@ -595,6 +628,14 @@ impl Client {
                     "Disguised chat message: msg: {}, chat type: {}, chat type name: {}, has target name: {}, target name: {}",
                     msg, chat_type, chat_type_name, has_target_name, target_name
                 );
+                match msg_tx.send(vec![msg]).await {
+                    Ok(_) => {
+                        debug!("Sent disguised chat message");
+                    }
+                    Err(e) => {
+                        warn!("Failed to send disguised chat message: {}", e.to_string());
+                    }
+                }
             }
             mapper::UPDATE_TIME => {
                 // 0x5e
@@ -763,10 +804,14 @@ impl Client {
             Some((x, y, z, yaw, pitch)) => {
                 format!(
                     "x: {}, y: {}, z: {}, yaw: {}, pitch: {}",
-                    x, y, z, yaw, pitch
+                    style(x).green(),
+                    style(y).green(),
+                    style(z).green(),
+                    style(yaw).cyan(),
+                    style(pitch).cyan()
                 )
             }
-            _ => "No position".to_string(),
+            _ => style("No position").red().to_string(),
         }
     }
 
@@ -776,13 +821,12 @@ impl Client {
         match (self.motor.clone(), self.icon.clone(), self.enforce_chat) {
             (Some(motor), Some(icon), Some(enforce_chat)) => {
                 format!(
-                    "motor: {}, icon: {}, enforce chat: {}",
-                    motor,
-                    icon.len() > 0,
-                    enforce_chat
+                    "motor: {}, enforce chat: {}",
+                    style(motor).white(),
+                    style(enforce_chat).red()
                 )
             }
-            _ => "No server data".to_string(),
+            _ => style("No server data").red().to_string(),
         }
     }
 
@@ -810,11 +854,13 @@ impl Client {
         match self.time {
             Some((word_age, time_of_day, day)) => {
                 format!(
-                    "word age: {}, day: {}, time of day: {}",
-                    word_age, day, time_of_day
+                    "word age: {}, day: {}, time of this day: {}",
+                    style(word_age).white(),
+                    style(day).cyan(),
+                    style(time_of_day).green()
                 )
             }
-            _ => "No time".to_string(),
+            _ => style("No time").red().to_string(),
         }
     }
 
@@ -822,8 +868,8 @@ impl Client {
     #[allow(unused)]
     pub fn get_tps(&self) -> String {
         match self.tps {
-            Some(tps) => format!("TPS: {:.2}", tps),
-            _ => "No TPS".to_string(),
+            Some(tps) => format!("TPS: {:.2}", style(tps).green()),
+            _ => style("No TPS").red().to_string(),
         }
     }
 
@@ -833,11 +879,13 @@ impl Client {
         match (self.exp_bar, self.level, self.exp_level) {
             (Some(exp_bar), Some(level), Some(exp_level)) => {
                 format!(
-                    "exp bar: {}, level: {}, exp (level): {}",
-                    exp_bar, level, exp_level
+                    "exp bar: {:.2}, level: {}, exp: {}",
+                    style(exp_bar).white(),
+                    style(level).green(),
+                    style(exp_level).white()
                 )
             }
-            _ => "No exp".to_string(),
+            _ => style("No exp").red().to_string(),
         }
     }
 
@@ -848,10 +896,12 @@ impl Client {
             (Some(health), Some(food), Some(saturation)) => {
                 format!(
                     "health: {}, food: {}, saturation: {}",
-                    health, food, saturation
+                    style(health).red(),
+                    style(food).green(),
+                    style(saturation).yellow()
                 )
             }
-            _ => "No health".to_string(),
+            _ => style("No health").red().to_string(),
         }
     }
 }

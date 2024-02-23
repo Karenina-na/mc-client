@@ -132,8 +132,7 @@ async fn main() {
         mpsc::channel(config.buffer.console_client_buffer.command as usize); // command channel (Console -> Client)
     let (response_tx, response_rx) =
         mpsc::channel(config.buffer.console_client_buffer.response as usize); // response channel (Client -> Console)
-    let (msg_tx, msg_rx) =
-        mpsc::channel(16); // message channel (Client -> Display)
+    let (msg_tx, msg_rx) = mpsc::channel(16); // message channel (Client -> Display)
 
     // start console
     match response_tx.send(vec!["reconnect".to_string()]).await {
@@ -144,9 +143,17 @@ async fn main() {
         }
     }
     core::console::build_console(command_tx, response_rx);
+    core::display::build_display(msg_rx);
 
     // start client
-    server_loop(&mut itti, &mut client, &mut command_rx, &response_tx).await;
+    server_loop(
+        &mut itti,
+        &mut client,
+        &mut command_rx,
+        &response_tx,
+        &msg_tx,
+    )
+    .await;
 }
 
 fn init_log(level: String) {
@@ -277,6 +284,7 @@ async fn server_loop(
     client: &mut Client,
     command_rx: &mut mpsc::Receiver<Vec<String>>,
     response_tx: &mpsc::Sender<Vec<String>>,
+    msg_tx: &mpsc::Sender<Vec<String>>,
 ) {
     'outer: loop {
         // reconnect
@@ -293,8 +301,6 @@ async fn server_loop(
                     if command.len() == 0 {
                         debug!("quit");
 
-                        // stop
-                        itti.stop().await;
                         break 'outer;
                     }
                     if command == vec!["reconnect"] {
@@ -306,8 +312,6 @@ async fn server_loop(
                 None => {
                     warn!("client already quit");
 
-                    // stop
-                    itti.stop().await;
                     break 'outer;
                 }
             }
@@ -322,7 +326,7 @@ async fn server_loop(
             }
         }
         // start client
-        client.start(itti, command_rx, &response_tx).await;
+        client.start(itti, command_rx, &response_tx, &msg_tx).await;
         // reset
         client.reset();
         // stop
