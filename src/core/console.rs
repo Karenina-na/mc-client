@@ -1,8 +1,10 @@
 use console::{style, Term};
+use crossterm::execute;
 use dialoguer::FuzzySelect;
 use log::{debug, error, info, warn};
 use prettytable::format::consts::FORMAT_BOX_CHARS;
 use prettytable::{row, Table};
+use std::io::{stdout, Write};
 use tokio::io::AsyncBufReadExt;
 use tokio::select;
 use tokio::sync::mpsc;
@@ -46,10 +48,16 @@ pub fn build_console(
                 }
             }
             // connect
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
             let mut command = String::new();
             let mut buf = tokio::io::BufReader::new(tokio::io::stdin());
             loop {
+                print!("{} ", style(">").cyan()); // display >
+                match stdout().flush() {
+                    Ok(_) => {}
+                    Err(_) => {
+                        warn!("flush screen failed");
+                    }
+                }
                 select! {
                     // input
                     res = buf.read_line(&mut command) => {
@@ -68,8 +76,20 @@ pub fn build_console(
                     res = msg_rx.recv() => {
                         match res {
                             Some(res) => {
+                                // clear input display
+                                match execute!(
+                                    Term::stdout(),
+                                    crossterm::cursor::MoveToColumn(0),
+                                    crossterm::terminal::Clear(crossterm::terminal::ClearType::CurrentLine)
+                                ) {
+                                    Ok(_) => {}
+                                    Err(_) => {
+                                        warn!("clear screen failed");
+                                    }
+                                }
+                                // display message
                                 res.iter().for_each(|msg| {
-                                    println!("{}", msg);
+                                    println!("{}{}", style("▌").white(), msg);
                                 });
                             }
                             None => {
@@ -79,6 +99,17 @@ pub fn build_console(
                             }
                         }
                     }
+                }
+            }
+            // clear input display
+            match execute!(
+                Term::stdout(),
+                crossterm::cursor::MoveToPreviousLine(1),
+                crossterm::terminal::Clear(crossterm::terminal::ClearType::CurrentLine)
+            ) {
+                Ok(_) => {}
+                Err(_) => {
+                    warn!("clear screen failed");
                 }
             }
             // command control
