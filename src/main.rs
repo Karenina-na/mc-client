@@ -143,8 +143,7 @@ async fn main() {
             exit(0)
         }
     }
-    core::console::build_console(command_tx, response_rx);
-    core::display::build_display(msg_rx);
+    core::console::build_console(command_tx, response_rx, msg_rx);
 
     // start client
     server_loop(
@@ -167,60 +166,21 @@ fn init_log(level: String) {
             exit(0);
         }
     }
-    match std::fs::create_dir_all(format!(
-        "log/{}",
-        Local::now().format("%Y-%m-%d").to_string()
-    )) {
-        Ok(_) => {}
-        Err(e) => {
-            error!("create log directory failed: {}", e);
-            exit(0);
-        }
-    }
 
-    // debug and info to console
+    // info warn error
     env_logger::builder()
         .filter_level(log::LevelFilter::Debug)
-        .target(env_logger::Target::Stderr);
-    env_logger::builder()
-        .filter_level(log::LevelFilter::Info)
-        .target(env_logger::Target::Stderr);
-
-    // warn
-    env_logger::builder()
-        .filter_level(log::LevelFilter::Warn)
         .target(Pipe(Box::new(
             std::fs::OpenOptions::new()
                 .create(true)
-                .write(true)
-                .truncate(true)
-                // log/yy-mm-dd/warn.log
+                .append(true)
                 .open(format!(
-                    "log/{}/{}.log",
-                    Local::now().format("%Y-%m-%d").to_string(),
-                    log::Level::Warn.to_string().to_lowercase()
+                    "log/{}.log",
+                    Local::now().format("%Y-%m-%d").to_string()
                 ))
                 .unwrap(),
-        ) as Box<dyn std::io::Write + Send>));
-
-    // error
-    env_logger::builder()
-        .filter_level(log::LevelFilter::Error)
-        .target(Pipe(Box::new(
-            std::fs::OpenOptions::new()
-                .create(true)
-                .write(true)
-                .truncate(true)
-                // log/yy-mm-dd/error.log
-                .open(format!(
-                    "log/{}/{}.log",
-                    Local::now().format("%Y-%m-%d").to_string(),
-                    log::Level::Error.to_string().to_lowercase()
-                ))
-                .unwrap(),
-        ) as Box<dyn std::io::Write + Send>));
-
-    env_logger::init();
+        ) as Box<dyn std::io::Write + Send>))
+        .init();
 }
 
 async fn yggdrasil_login(url: String, username: String, password: String) -> String {

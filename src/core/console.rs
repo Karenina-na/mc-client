@@ -1,15 +1,16 @@
-use std::os::windows::prelude::AsHandle;
 use console::{style, Term};
 use dialoguer::FuzzySelect;
 use log::{debug, error, info, warn};
 use prettytable::format::consts::FORMAT_BOX_CHARS;
 use prettytable::{row, Table};
-use tokio::io::{AsyncBufReadExt};
+use tokio::io::AsyncBufReadExt;
+use tokio::select;
 use tokio::sync::mpsc;
 
 pub fn build_console(
     command_tx: mpsc::Sender<Vec<String>>,
     mut response_rx: mpsc::Receiver<Vec<String>>,
+    mut msg_rx: mpsc::Receiver<Vec<String>>,
 ) {
     // console -- io channel
     tokio::spawn(async move {
@@ -47,12 +48,37 @@ pub fn build_console(
             // connect
             tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
             let mut command = String::new();
-            match tokio::io::BufReader::new(tokio::io::stdin()).read_line(&mut command).await {
-                Ok(_) => {}
-                Err(_) => {
-                    info!("client already quit");
-                    println!("client already {}", style("quit").red());
-                    break;
+            let mut buf = tokio::io::BufReader::new(tokio::io::stdin());
+            loop {
+                select! {
+                    // input
+                    res = buf.read_line(&mut command) => {
+                        match res {
+                            Ok(_) => {
+                                break;
+                            }
+                            Err(_) => {
+                                info!("client already quit");
+                                println!("client already {}", style("quit").red());
+                                break;
+                            }
+                        }
+                    }
+                    // display
+                    res = msg_rx.recv() => {
+                        match res {
+                            Some(res) => {
+                                res.iter().for_each(|msg| {
+                                    println!("{}", msg);
+                                });
+                            }
+                            None => {
+                                info!("client already quit");
+                                println!("client already {}", style("quit").red());
+                                break;
+                            }
+                        }
+                    }
                 }
             }
             // command control
@@ -228,7 +254,6 @@ pub fn build_console(
                         }
                     }
                 }
-                "" => {}
                 msg => {
                     if msg.starts_with('/') {
                         // 两个//

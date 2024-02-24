@@ -503,11 +503,21 @@ impl Client {
                     self.difficulty.as_ref().unwrap(),
                     lock
                 );
-                println!(
-                    "Server difficulty: {}, is locked: {}",
-                    style(self.difficulty.as_ref().unwrap()).green(),
-                    style(lock).green()
-                );
+                match msg_tx
+                    .send(vec![format!(
+                        "Server difficulty: {}, is locked: {}",
+                        style(self.difficulty.as_ref().unwrap()).green(),
+                        style(lock).green()
+                    )])
+                    .await
+                {
+                    Ok(_) => {
+                        debug!("Sent difficulty");
+                    }
+                    Err(e) => {
+                        warn!("Failed to send difficulty: {}", e.to_string());
+                    }
+                }
             }
             mapper::KEEP_LIVE => {
                 // 0x23
@@ -535,7 +545,20 @@ impl Client {
                     self.motor.as_ref().unwrap(),
                     self.enforce_chat.as_ref().unwrap()
                 );
-                println!("moto: {}", style(self.motor.as_ref().unwrap()).white(),)
+                match msg_tx
+                    .send(vec![format!(
+                        "moto: {}",
+                        style(self.motor.as_ref().unwrap()).white()
+                    )])
+                    .await
+                {
+                    Ok(_) => {
+                        debug!("Sent server data");
+                    }
+                    Err(e) => {
+                        warn!("Failed to send server data: {}", e.to_string());
+                    }
+                }
             }
             mapper::SYNC_PLAYER_POSITION => {
                 // 0x3c
@@ -611,7 +634,7 @@ impl Client {
                 // 0x64
                 let (data, is_overlay) = parser::play::system_chat_message::parse(packet);
                 info!("System chat message: {}, overlay: {}", data, is_overlay);
-                match msg_tx.send(vec![data]).await {
+                match msg_tx.send(vec!["system chat".to_string(), data]).await {
                     Ok(_) => {
                         debug!("Sent system chat message");
                     }
@@ -628,7 +651,7 @@ impl Client {
                     "Disguised chat message: msg: {}, chat type: {}, chat type name: {}, has target name: {}, target name: {}",
                     msg, chat_type, chat_type_name, has_target_name, target_name
                 );
-                match msg_tx.send(vec![msg]).await {
+                match msg_tx.send(vec!["disguised chat".to_string(), msg]).await {
                     Ok(_) => {
                         debug!("Sent disguised chat message");
                     }
