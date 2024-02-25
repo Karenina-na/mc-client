@@ -285,6 +285,7 @@ pub fn build_console(
                         }
                     }
                 }
+                "" => {}
                 msg => {
                     if msg.starts_with('/') {
                         // 两个//
