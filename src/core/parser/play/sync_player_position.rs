@@ -18,7 +18,7 @@ pub fn parse(pkt: Vec<u8>) -> (f64, f64, f64, f32, f32, bool, i32) {
     let is_abs = flags[0] == 0x00;
     let tp_id = transfer_var::var_int2uint(tp_id.to_vec())[0];
 
-    return (x, y, z, yaw, pitch, is_abs, tp_id);
+    (x, y, z, yaw, pitch, is_abs, tp_id)
 }
 
 #[cfg(test)]

@@ -24,7 +24,7 @@ pub fn parse(pkt: Vec<u8>) -> (u8, String, String) {
         .map(|&c| c as char)
         .collect::<String>();
 
-    return (id, channel.to_string(), data.to_string());
+    (id, channel.to_string(), data.to_string())
 }
 
 #[cfg(test)]

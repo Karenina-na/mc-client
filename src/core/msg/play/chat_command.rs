@@ -17,15 +17,11 @@ pub fn new(command: String, compress: bool) -> Vec<u8> {
     ]
     .concat();
     // salt
-    for _ in 0..8 {
-        chat_command_pkt.push(0x00);
-    }
+    chat_command_pkt.extend(vec![0x00; 8]);
     // array length
     chat_command_pkt.push(0x00);
     // acknowledge
-    for _ in 0..4 {
-        chat_command_pkt.push(0x00);
-    }
+    chat_command_pkt.extend(vec![0x00; 4]);
     chat_command_pkt = [vec![chat_command_pkt.len() as u8], chat_command_pkt].concat();
     chat_command_pkt
 }

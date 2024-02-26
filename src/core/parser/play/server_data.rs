@@ -6,7 +6,7 @@ pub fn parse(pkt: Vec<u8>) -> (String, Vec<u8>, bool) {
     let icon = String::from_utf8(pkt[2 + moto_n..2 + moto_n + icon_n].to_vec()).unwrap();
     let enforce_chat = pkt[2 + moto_n + icon_n] == 0x01;
 
-    return (moto, icon.into_bytes(), enforce_chat);
+    (moto, icon.into_bytes(), enforce_chat)
 }
 
 #[cfg(test)]

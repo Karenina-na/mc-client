@@ -4,10 +4,10 @@ pub fn parse(pkt: Vec<u8>) -> (String, bool) {
     let lock: bool = pkt[1] == 0x01;
 
     match data {
-        0x00 => return ("peaceful".to_string(), lock),
-        0x01 => return ("easy".to_string(), lock),
-        0x02 => return ("normal".to_string(), lock),
-        0x03 => return ("hard".to_string(), lock),
+        0x00 => ("peaceful".to_string(), lock),
+        0x01 => ("easy".to_string(), lock),
+        0x02 => ("normal".to_string(), lock),
+        0x03 => ("hard".to_string(), lock),
         _ => panic!("Invalid difficulty"),
     }
 }

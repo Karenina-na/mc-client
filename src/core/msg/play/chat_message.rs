@@ -17,15 +17,11 @@ pub fn new(msg: String, compress: bool) -> Vec<u8> {
     ]
     .concat();
     // salt
-    for _ in 0..8 {
-        chat_message_pkt.push(0x00);
-    }
+    chat_message_pkt.extend(vec![0x00; 8]);
     // has signature
     chat_message_pkt.push(0x00);
     // acknowledge
-    for _ in 0..4 {
-        chat_message_pkt.push(0x00);
-    }
+    chat_message_pkt.extend(vec![0x00; 4]);
     chat_message_pkt = [vec![chat_message_pkt.len() as u8], chat_message_pkt].concat();
     chat_message_pkt
 }

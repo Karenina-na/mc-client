@@ -7,7 +7,7 @@ pub fn new(username: String, uuid: Vec<u8>) -> Vec<u8> {
     login_start_pkt.append(&mut transfer_var::uint2var_int(vec![username.len() as i32]));
     login_start_pkt.append(&mut username.as_bytes().to_vec());
     // uuid
-    if uuid.len() == 0 {
+    if uuid.is_empty() {
         login_start_pkt.append(&mut vec![0x00]);
     } else {
         login_start_pkt.append(&mut vec![0x01]);

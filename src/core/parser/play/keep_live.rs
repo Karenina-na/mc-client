@@ -1,7 +1,7 @@
 pub fn parse(pkt: Vec<u8>) -> Vec<u8> {
     // parse
     let data = &pkt[0..];
-    return data.to_vec();
+    data.to_vec()
 }
 
 #[cfg(test)]

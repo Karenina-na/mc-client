@@ -24,14 +24,7 @@ pub fn build_console(
                 Ok(res) if res == vec!["reconnect"] => {
                     if reconnect_loop(command_tx.clone()).await {
                         // clear channel
-                        loop {
-                            match response_rx.try_recv() {
-                                Ok(_) => {}
-                                Err(_) => {
-                                    break;
-                                }
-                            }
-                        }
+                        while response_rx.try_recv().is_ok() {}
                         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                     } else {
                         // quit
@@ -355,11 +348,10 @@ async fn command_handle(
         "" => {}
         msg => {
             if msg.starts_with('/') {
-                // 两个//
-                if msg.starts_with("//") {
+                if let Some(command) = msg.strip_prefix("//") {
                     // send message
                     match command_tx
-                        .send(vec!["command".to_string(), msg[2..].to_string()])
+                        .send(vec!["command".to_string(), command.to_string()])
                         .await
                     {
                         Ok(_) => {}

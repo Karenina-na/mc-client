@@ -6,6 +6,7 @@ use tokio::sync::{mpsc, oneshot};
 
 trait IttiInterface {}
 
+#[allow(clippy::upper_case_acronyms)]
 pub struct ITTI {
     reader_rx: Option<mpsc::Receiver<Vec<u8>>>,
     writer_tx: Option<mpsc::Sender<Vec<u8>>>,
@@ -107,12 +108,12 @@ impl ITTI {
                 Ok(_) => Ok(()),
                 Err(_) => {
                     warn!("send: send failed");
-                    return Err(io::Error::new(io::ErrorKind::Other, "send failed"));
+                    Err(io::Error::new(io::ErrorKind::Other, "send failed"))
                 }
             }
         } else {
             warn!("send: channel closed");
-            return Err(io::Error::new(io::ErrorKind::Other, "send: channel closed"));
+            Err(io::Error::new(io::ErrorKind::Other, "send: channel closed"))
         }
     }
 

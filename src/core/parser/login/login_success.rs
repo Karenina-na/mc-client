@@ -7,7 +7,7 @@ pub fn parse(pkt: Vec<u8>) -> (Vec<u8>, String) {
         .map(|&c| c as char)
         .collect::<String>();
 
-    return (uuid.to_vec(), username.to_string());
+    (uuid.to_vec(), username.to_string())
 }
 
 #[cfg(test)]

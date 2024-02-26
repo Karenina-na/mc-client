@@ -34,7 +34,7 @@ pub fn split_tcp_packet(packet: Vec<u8>) -> (Vec<Vec<u8>>, i32, Vec<u8>) {
 #[allow(dead_code)]
 pub fn split_packet(packet: Vec<u8>, threshold: i32) -> (i32, i32, i32, Vec<u8>) {
     // check compress
-    return if threshold >= 0 {
+    if threshold >= 0 {
         // compress
         let var_int_num = get_var_int_num(packet.clone(), 2);
         let packet_len = util::transfer_var::var_int2uint(packet[0..var_int_num[0]].to_vec())[0];
@@ -52,7 +52,7 @@ pub fn split_packet(packet: Vec<u8>, threshold: i32) -> (i32, i32, i32, Vec<u8>)
         )[0];
         let packet_data = packet[var_int_num[0] + var_int_num[1]..].to_vec();
         (packet_len, -1, packet_id, packet_data)
-    };
+    }
 }
 
 // never used

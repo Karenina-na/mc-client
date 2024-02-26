@@ -25,12 +25,12 @@ impl Config {
                     // validate
                     match config.validate() {
                         Ok(_) => Ok(config),
-                        Err(e) => Err(format!("config.toml validate failed: {}", e.to_string())),
+                        Err(e) => Err(format!("config.toml validate failed: {}", e)),
                     }
                 }
-                Err(e) => Err(format!("config.toml parse failed {}", e.to_string())),
+                Err(e) => Err(format!("config.toml parse failed {}", e)),
             },
-            Err(e) => Err(format!("config.toml read failed: {}", e.to_string())),
+            Err(e) => Err(format!("config.toml read failed: {}", e)),
         }
     }
 }

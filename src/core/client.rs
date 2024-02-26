@@ -13,9 +13,9 @@ use msg::play::{chat_command, chat_message, plugin_message, respawn};
 use tokio::sync::mpsc::{Receiver, Sender};
 
 enum Status {
-    HANDSHAKE,
-    LOGIN,
-    PLAY,
+    Handshake,
+    Login,
+    Play,
 }
 
 pub struct Client {
@@ -79,7 +79,7 @@ impl Client {
             compress: false,
             time: None,
             tps: None,
-            status: Status::HANDSHAKE,
+            status: Status::Handshake,
         }
     }
     pub async fn start(
@@ -88,7 +88,7 @@ impl Client {
         command_rx: &mut Receiver<Vec<String>>,
         response_tx: &Sender<Vec<String>>,
         msg_tx: &Sender<Vec<String>>,
-    ) -> () {
+    ) {
         // start itti
         match itti.build().await {
             Ok(_) => {
@@ -142,7 +142,7 @@ impl Client {
         self.enforce_chat = None;
         self.position = None;
         self.compress = false;
-        self.status = Status::HANDSHAKE;
+        self.status = Status::Handshake;
         self.time = None;
         self.tps = None;
         self.exp_bar = None;
@@ -164,7 +164,7 @@ impl Client {
             tokio::select! {
                 // console
                 Some(packet) = command_rx.recv() => {
-                    if packet.len() == 0 {
+                    if packet.is_empty() {
                         info!("client quit");
                         break;
                     }
@@ -174,7 +174,7 @@ impl Client {
 
                 // server
                 Ok(mut packet) = itti.recv() => {
-                    if packet.len() == 0 {
+                    if packet.is_empty() {
                         info!("Server closed");
                         break;
                     }
@@ -210,7 +210,7 @@ impl Client {
                         self.val = val;
                         self.buffer = Some(packets.pop().unwrap());
 
-                    }else if res.len() != 0 {
+                    }else if !res.is_empty() {
                         // handle not enough length for var int
                         self.buffer = Some(res);
                     }
@@ -234,7 +234,7 @@ impl Client {
         msg_tx: &Sender<Vec<String>>,
     ) {
         match self.status {
-            Status::HANDSHAKE => {
+            Status::Handshake => {
                 // check len
                 if packet.len() - 1 != packet[0] as usize {
                     warn!(
@@ -248,7 +248,7 @@ impl Client {
                 let packet = packet[2..].to_vec();
                 self.handle_handshake_packet(packet, packet_id, itti).await;
             }
-            Status::LOGIN => {
+            Status::Login => {
                 let (packet_len, data_len, packet_id, packet) =
                     util::split::split_packet(packet, self.threshold.unwrap_or(-1));
 
@@ -310,7 +310,7 @@ impl Client {
                     self.handle_login_packet(packet, packet_id, itti).await;
                 }
             }
-            Status::PLAY => {
+            Status::Play => {
                 let (packet_len, data_len, packet_id, packet) =
                     util::split::split_packet(packet, self.threshold.unwrap_or(-1));
 
@@ -390,15 +390,14 @@ impl Client {
                         username, self.username
                     );
                 }
-                self.status = Status::PLAY;
+                self.status = Status::Play;
                 info!(
                     "Logged in: {}, uuid: {:?}",
                     username,
                     self.uuid
                         .as_ref()
                         .iter()
-                        .map(|x| format!("0x{:02x?} ", x))
-                        .collect::<String>()
+                        .fold(String::new(), |acc, x| acc + &format!("0x{:02x?} ", x))
                 );
                 debug!("Changing status to play");
             }
@@ -406,16 +405,13 @@ impl Client {
                 // 0x03
                 let threshold = set_compression::parse(packet);
                 self.threshold = Some(threshold);
-                self.status = Status::LOGIN;
+                self.status = Status::Login;
                 info!("Set compression: {}", self.threshold.as_ref().unwrap());
                 // check compress
-                match self.threshold {
-                    Some(threshold) => {
-                        if threshold >= 0 {
-                            self.compress = true
-                        }
+                if let Some(threshold) = self.threshold {
+                    if threshold >= 0 {
+                        self.compress = true
                     }
-                    None => {}
                 }
             }
             mapper::LOGIN_PLUGIN_REQUEST => {
@@ -452,15 +448,14 @@ impl Client {
                         username, self.username
                     );
                 }
-                self.status = Status::PLAY;
+                self.status = Status::Play;
                 info!(
                     "Logged in: {}, uuid: {:?}",
                     username,
                     self.uuid
                         .as_ref()
                         .iter()
-                        .map(|x| format!("0x{:02x?} ", x))
-                        .collect::<String>()
+                        .fold(String::new(), |acc, x| acc + &format!("0x{:02x?} ", x))
                 );
                 debug!("Changing status to play");
             }
@@ -589,6 +584,7 @@ impl Client {
                 // 0x17
                 let (channel, data) = parser::play::plugin_message::parse(packet);
                 info!("Plugin message: channel- {}, data- {:?}", channel, data);
+                #[allow(clippy::single_match)]
                 match channel.as_str() {
                     "minecraft:brand" => {
                         // send brand
@@ -665,20 +661,17 @@ impl Client {
                 let (word_age, time_of_day) = parser::play::update_time::parse(packet);
                 let day = word_age / 24000;
                 // cal tps
-                match self.time {
-                    Some((last_word_age, last_time_of_day, last_day)) => {
-                        // 1 tick = 1/20 sec
-                        let tps = (word_age - last_word_age) as f32;
-                        match self.tps {
-                            Some(last_tps) => {
-                                self.tps = Some((last_tps + tps) / 2.0);
-                            }
-                            None => {
-                                self.tps = Some(tps);
-                            }
+                if let Some((last_word_age, last_time_of_day, last_day)) = self.time {
+                    // 1 tick = 1/20 sec
+                    let tps = (word_age - last_word_age) as f32;
+                    match self.tps {
+                        Some(last_tps) => {
+                            self.tps = Some((last_tps + tps) / 2.0);
+                        }
+                        None => {
+                            self.tps = Some(tps);
                         }
                     }
-                    None => {}
                 }
                 match self.tps {
                     Some(tps) => {
