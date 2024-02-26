@@ -113,211 +113,9 @@ pub fn build_console(
                 }
             }
             // command control
-            match command.trim() {
-                "/quit" => {
-                    // quit
-                    match command_tx.send(vec![]).await {
-                        Ok(_) => {}
-                        Err(_) => {
-                            info!("client already quit");
-                            println!("client already {}", style("quit").red());
-                        }
-                    }
-                    println!("console {}", style("quit").red());
-                    break;
-                }
-                "/respawn" => {
-                    // respawn
-                    match command_tx.send(vec!["respawn".to_string()]).await {
-                        Ok(_) => {
-                            println!("You {}", style("respawn").green());
-                        }
-                        Err(_) => {
-                            info!("client already quit");
-                            println!("client already {}", style("quit").red());
-                        }
-                    }
-                }
-                "/position" => {
-                    // get position
-                    match command_tx.send(vec!["position".to_string()]).await {
-                        Ok(_) => {}
-                        Err(_) => {
-                            info!("client already quit");
-                            println!("client already {}", style("quit").red());
-                        }
-                    }
-                    match response_rx.recv().await {
-                        Some(res) => {
-                            info!("position: {:?}", res);
-                            println!("{}", res[0]);
-                        }
-                        None => {
-                            info!("client already quit");
-                            println!("client already {}", style("quit").red());
-                        }
-                    }
-                }
-                "/server" => {
-                    // get server data
-                    match command_tx.send(vec!["server".to_string()]).await {
-                        Ok(_) => {}
-                        Err(_) => {
-                            info!("client already quit");
-                            println!("client already {}", style("quit").red());
-                        }
-                    }
-                    match response_rx.recv().await {
-                        Some(res) => {
-                            info!("server data: {:?}", res);
-                            println!("{}", res[0]);
-                        }
-                        None => {
-                            info!("client already quit");
-                            println!("client already {}", style("quit").red());
-                        }
-                    }
-                }
-                "/time" => {
-                    // get time
-                    match command_tx.send(vec!["time".to_string()]).await {
-                        Ok(_) => {}
-                        Err(_) => {
-                            info!("client already quit");
-                            println!("client already {}", style("quit").red());
-                        }
-                    }
-                    match response_rx.recv().await {
-                        Some(res) => {
-                            info!("time: {:?}", res);
-                            println!("{}", res[0]);
-                        }
-                        None => {
-                            info!("client already quit");
-                            println!("client already {}", style("quit").red());
-                        }
-                    }
-                }
-                "/tps" => {
-                    // get tps
-                    match command_tx.send(vec!["tps".to_string()]).await {
-                        Ok(_) => {}
-                        Err(_) => {
-                            info!("client already quit");
-                            println!("client already {}", style("quit").red());
-                        }
-                    }
-                    match response_rx.recv().await {
-                        Some(res) => {
-                            info!("tps: {:?}", res);
-                            println!("{}", res[0]);
-                        }
-                        None => {
-                            info!("client already quit");
-                            println!("client already {}", style("quit").red());
-                        }
-                    }
-                }
-                "/exp" => {
-                    // get exp
-                    match command_tx.send(vec!["exp".to_string()]).await {
-                        Ok(_) => {}
-                        Err(_) => {
-                            info!("client already quit");
-                            println!("client already {}", style("quit").red());
-                        }
-                    }
-                    match response_rx.recv().await {
-                        Some(res) => {
-                            info!("exp: {:?}", res);
-                            println!("{}", res[0]);
-                        }
-                        None => {
-                            info!("client already quit");
-                            println!("client already {}", style("quit").red());
-                        }
-                    }
-                }
-                "/health" => {
-                    // get health
-                    match command_tx.send(vec!["health".to_string()]).await {
-                        Ok(_) => {}
-                        Err(_) => {
-                            info!("client already quit");
-                            println!("client already {}", style("quit").red());
-                        }
-                    }
-                    match response_rx.recv().await {
-                        Some(res) => {
-                            info!("health: {:?}", res);
-                            println!("{}", res[0]);
-                        }
-                        None => {
-                            info!("client already quit");
-                            println!("client already {}", style("quit").red());
-                        }
-                    }
-                }
-                "/help" => {
-                    // help
-                    let mut t = Table::new();
-                    t.set_format(*FORMAT_BOX_CHARS);
-                    t.set_titles(row![style("Command").blue(), style("Description").white()]);
-                    t.add_row(row![style("/clear").yellow(), "Clear console"]);
-                    t.add_row(row![style("/quit").yellow(), "Quit console"]);
-                    t.add_row(row![style("/respawn").yellow(), "Respawn"]);
-                    t.add_row(row![style("/position").yellow(), "Get position"]);
-                    t.add_row(row![style("/server").yellow(), "Get server data"]);
-                    t.add_row(row![style("/time").yellow(), "Get time"]);
-                    t.add_row(row![style("/tps").yellow(), "Get tps"]);
-                    t.add_row(row![style("/exp").yellow(), "Get exp"]);
-                    t.add_row(row![style("/health").yellow(), "Get health"]);
-                    t.add_row(row![style("chat message").yellow(), "Send message"]);
-                    t.add_row(row![style("//command").yellow(), "Send server command"]);
-                    t.printstd();
-                }
-                "/clear" => {
-                    // clear
-                    match Term::stdout().clear_screen() {
-                        Ok(_) => {}
-                        Err(_) => {
-                            warn!("clear screen failed");
-                        }
-                    }
-                }
-                "" => {}
-                msg => {
-                    if msg.starts_with('/') {
-                        // 两个//
-                        if msg.starts_with("//") {
-                            // send message
-                            match command_tx
-                                .send(vec!["command".to_string(), msg[2..].to_string()])
-                                .await
-                            {
-                                Ok(_) => {}
-                                Err(_) => {
-                                    info!("client already quit");
-                                }
-                            }
-                        } else {
-                            println!("{}: {}", style("Unknown command").red(), msg);
-                            info!("Unknown command: {}", msg);
-                        }
-                    } else {
-                        // send message
-                        match command_tx
-                            .send(vec!["chat".to_string(), msg.to_string()])
-                            .await
-                        {
-                            Ok(_) => {}
-                            Err(_) => {
-                                info!("client already quit");
-                            }
-                        }
-                    }
-                }
-            }
+            if !command_handle(command, command_tx.clone(), &mut response_rx).await {
+                break;
+            };
         }
     });
 }
@@ -373,6 +171,219 @@ async fn reconnect_loop(command_tx: mpsc::Sender<Vec<String>>) -> bool {
             }
         }
         debug!("client not connect, please input /reconnect");
+    }
+    true
+}
+
+async fn command_handle(
+    command: String,
+    command_tx: mpsc::Sender<Vec<String>>,
+    response_rx: &mut mpsc::Receiver<Vec<String>>,
+) -> bool {
+    match command.trim() {
+        "/quit" => {
+            // quit
+            match command_tx.send(vec![]).await {
+                Ok(_) => {}
+                Err(_) => {
+                    info!("client already quit");
+                    println!("client already {}", style("quit").red());
+                }
+            }
+            println!("console {}", style("quit").red());
+            return false;
+        }
+        "/respawn" => {
+            // respawn
+            match command_tx.send(vec!["respawn".to_string()]).await {
+                Ok(_) => {
+                    println!("You {}", style("respawn").green());
+                }
+                Err(_) => {
+                    info!("client already quit");
+                    println!("client already {}", style("quit").red());
+                }
+            }
+        }
+        "/position" => {
+            // get position
+            match command_tx.send(vec!["position".to_string()]).await {
+                Ok(_) => {}
+                Err(_) => {
+                    info!("client already quit");
+                    println!("client already {}", style("quit").red());
+                }
+            }
+            match response_rx.recv().await {
+                Some(res) => {
+                    info!("position: {:?}", res);
+                    println!("{}", res[0]);
+                }
+                None => {
+                    info!("client already quit");
+                    println!("client already {}", style("quit").red());
+                }
+            }
+        }
+        "/server" => {
+            // get server data
+            match command_tx.send(vec!["server".to_string()]).await {
+                Ok(_) => {}
+                Err(_) => {
+                    info!("client already quit");
+                    println!("client already {}", style("quit").red());
+                }
+            }
+            match response_rx.recv().await {
+                Some(res) => {
+                    info!("server data: {:?}", res);
+                    println!("{}", res[0]);
+                }
+                None => {
+                    info!("client already quit");
+                    println!("client already {}", style("quit").red());
+                }
+            }
+        }
+        "/time" => {
+            // get time
+            match command_tx.send(vec!["time".to_string()]).await {
+                Ok(_) => {}
+                Err(_) => {
+                    info!("client already quit");
+                    println!("client already {}", style("quit").red());
+                }
+            }
+            match response_rx.recv().await {
+                Some(res) => {
+                    info!("time: {:?}", res);
+                    println!("{}", res[0]);
+                }
+                None => {
+                    info!("client already quit");
+                    println!("client already {}", style("quit").red());
+                }
+            }
+        }
+        "/tps" => {
+            // get tps
+            match command_tx.send(vec!["tps".to_string()]).await {
+                Ok(_) => {}
+                Err(_) => {
+                    info!("client already quit");
+                    println!("client already {}", style("quit").red());
+                }
+            }
+            match response_rx.recv().await {
+                Some(res) => {
+                    info!("tps: {:?}", res);
+                    println!("{}", res[0]);
+                }
+                None => {
+                    info!("client already quit");
+                    println!("client already {}", style("quit").red());
+                }
+            }
+        }
+        "/exp" => {
+            // get exp
+            match command_tx.send(vec!["exp".to_string()]).await {
+                Ok(_) => {}
+                Err(_) => {
+                    info!("client already quit");
+                    println!("client already {}", style("quit").red());
+                }
+            }
+            match response_rx.recv().await {
+                Some(res) => {
+                    info!("exp: {:?}", res);
+                    println!("{}", res[0]);
+                }
+                None => {
+                    info!("client already quit");
+                    println!("client already {}", style("quit").red());
+                }
+            }
+        }
+        "/health" => {
+            // get health
+            match command_tx.send(vec!["health".to_string()]).await {
+                Ok(_) => {}
+                Err(_) => {
+                    info!("client already quit");
+                    println!("client already {}", style("quit").red());
+                }
+            }
+            match response_rx.recv().await {
+                Some(res) => {
+                    info!("health: {:?}", res);
+                    println!("{}", res[0]);
+                }
+                None => {
+                    info!("client already quit");
+                    println!("client already {}", style("quit").red());
+                }
+            }
+        }
+        "/help" => {
+            // help
+            let mut t = Table::new();
+            t.set_format(*FORMAT_BOX_CHARS);
+            t.set_titles(row![style("Command").blue(), style("Description").white()]);
+            t.add_row(row![style("/clear").yellow(), "Clear console"]);
+            t.add_row(row![style("/quit").yellow(), "Quit console"]);
+            t.add_row(row![style("/respawn").yellow(), "Respawn"]);
+            t.add_row(row![style("/position").yellow(), "Get position"]);
+            t.add_row(row![style("/server").yellow(), "Get server data"]);
+            t.add_row(row![style("/time").yellow(), "Get time"]);
+            t.add_row(row![style("/tps").yellow(), "Get tps"]);
+            t.add_row(row![style("/exp").yellow(), "Get exp"]);
+            t.add_row(row![style("/health").yellow(), "Get health"]);
+            t.add_row(row![style("chat message").yellow(), "Send message"]);
+            t.add_row(row![style("//command").yellow(), "Send server command"]);
+            t.printstd();
+        }
+        "/clear" => {
+            // clear
+            match Term::stdout().clear_screen() {
+                Ok(_) => {}
+                Err(_) => {
+                    warn!("clear screen failed");
+                }
+            }
+        }
+        "" => {}
+        msg => {
+            if msg.starts_with('/') {
+                // 两个//
+                if msg.starts_with("//") {
+                    // send message
+                    match command_tx
+                        .send(vec!["command".to_string(), msg[2..].to_string()])
+                        .await
+                    {
+                        Ok(_) => {}
+                        Err(_) => {
+                            info!("client already quit");
+                        }
+                    }
+                } else {
+                    println!("{}: {}", style("Unknown command").red(), msg);
+                    info!("Unknown command: {}", msg);
+                }
+            } else {
+                // send message
+                match command_tx
+                    .send(vec!["chat".to_string(), msg.to_string()])
+                    .await
+                {
+                    Ok(_) => {}
+                    Err(_) => {
+                        info!("client already quit");
+                    }
+                }
+            }
+        }
     }
     true
 }
