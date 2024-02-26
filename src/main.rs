@@ -4,10 +4,15 @@ use chrono::Local;
 use config::factory::Config;
 use console::style;
 use dialoguer::{FuzzySelect, Password};
-use env_logger::Target::Pipe;
 use log::{debug, error, info, warn};
+use std::fs::OpenOptions;
 use std::process::exit;
+use std::sync::Arc;
 use tokio::sync::mpsc;
+use tracing_subscriber::filter::FilterFn;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{fmt, Layer};
 use yggdrasil::authenticate;
 
 mod config;
@@ -67,7 +72,7 @@ async fn main() {
             let username = config.general.account.username.clone();
             let url = config.general.auth_server.host.clone();
             let name = yggdrasil_login(url, username, password).await;
-            if name == "" {
+            if name.is_empty() {
                 error!("login failed");
                 exit(0);
             }
@@ -100,7 +105,7 @@ async fn main() {
             let password = password.to_string();
             let url = config.general.auth_server.host.clone();
             let name = yggdrasil_login(url, username, password).await;
-            if name == "" {
+            if name.is_empty() {
                 error!("login failed");
                 exit(0);
             }
@@ -157,8 +162,16 @@ async fn main() {
 }
 
 fn init_log(level: String) {
-    std::env::set_var("RUST_LOG", level);
-    // create log
+    let max_level = match level.as_str() {
+        "debug" => Arc::new(tracing::Level::DEBUG),
+        "info" => Arc::new(tracing::Level::INFO),
+        "warn" => Arc::new(tracing::Level::WARN),
+        "error" => Arc::new(tracing::Level::ERROR),
+        _ => Arc::new(tracing::Level::INFO),
+    };
+
+    // file
+    let log_dir = format!("log/{}", Local::now().format("%Y-%m-%d"));
     match std::fs::create_dir_all("log") {
         Ok(_) => {}
         Err(e) => {
@@ -166,20 +179,131 @@ fn init_log(level: String) {
             exit(0);
         }
     }
+    match std::fs::create_dir_all(log_dir.clone()) {
+        Ok(_) => {}
+        Err(e) => {
+            error!("create log directory failed: {}", e);
+            exit(0);
+        }
+    }
 
-    // info warn error
-    env_logger::builder()
-        .filter_level(log::LevelFilter::Debug)
-        .target(Pipe(Box::new(
-            std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(format!(
-                    "log/{}.log",
-                    Local::now().format("%Y-%m-%d").to_string()
-                ))
-                .unwrap(),
-        ) as Box<dyn std::io::Write + Send>))
+    let log_dir = format!("log/{}", Local::now().format("%Y-%m-%d"));
+
+    // writer
+    let debug_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_dir.clone() + "/debug.log")
+        .unwrap();
+
+    let info_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_dir.clone() + "/info.log")
+        .unwrap();
+
+    let warn_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_dir.clone() + "/warn.log")
+        .unwrap();
+
+    let error_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_dir.clone() + "/error.log")
+        .unwrap();
+
+    // init
+    let max_level_debug = max_level.clone();
+    let max_level_info = max_level.clone();
+    let max_level_warn = max_level.clone();
+    let max_level_warn_console = max_level.clone();
+    let max_level_error = max_level.clone();
+    let max_level_error_console = max_level.clone();
+    tracing_subscriber::registry()
+        // debug
+        .with(
+            fmt::layer()
+                .with_writer(debug_file)
+                .with_thread_names(true)
+                .with_thread_ids(true)
+                .with_target(true)
+                .with_level(true)
+                .with_ansi(false)
+                .with_filter(FilterFn::new(move |metadata| {
+                    metadata.level() == &tracing::Level::DEBUG
+                        && metadata.level() <= &*max_level_debug
+                })),
+        )
+        // info
+        .with(
+            fmt::layer()
+                .with_writer(info_file)
+                .with_thread_names(true)
+                .with_thread_ids(true)
+                .with_target(true)
+                .with_level(true)
+                .with_ansi(false)
+                .with_filter(FilterFn::new(move |metadata| {
+                    metadata.level() == &tracing::Level::INFO
+                        && metadata.level() <= &*max_level_info
+                })),
+        )
+        // warn
+        .with(
+            fmt::layer()
+                .with_writer(warn_file)
+                .with_thread_names(true)
+                .with_thread_ids(true)
+                .with_target(true)
+                .with_level(true)
+                .with_ansi(false)
+                .with_filter(FilterFn::new(move |metadata| {
+                    metadata.level() == &tracing::Level::WARN
+                        && metadata.level() <= &*max_level_warn
+                })),
+        )
+        .with(
+            fmt::layer()
+                .with_writer(std::io::stderr)
+                .with_thread_names(true)
+                .with_thread_ids(true)
+                .with_target(true)
+                .with_level(true)
+                .with_ansi(true)
+                .with_filter(FilterFn::new(move |metadata| {
+                    metadata.level() == &tracing::Level::WARN
+                        && metadata.level() <= &*max_level_warn_console
+                })),
+        )
+        // error
+        .with(
+            fmt::layer()
+                .with_writer(error_file)
+                .with_thread_names(true)
+                .with_thread_ids(true)
+                .with_target(true)
+                .with_level(true)
+                .with_ansi(false)
+                .with_filter(FilterFn::new(move |metadata| {
+                    metadata.level() == &tracing::Level::ERROR
+                        && metadata.level() <= &*max_level_error
+                })),
+        )
+        .with(
+            fmt::layer()
+                .with_writer(std::io::stderr)
+                .with_thread_names(true)
+                .with_thread_ids(true)
+                .with_target(true)
+                .with_level(true)
+                .with_ansi(true)
+                .with_filter(FilterFn::new(move |metadata| {
+                    metadata.level() == &tracing::Level::ERROR
+                        && metadata.level() <= &*max_level_error_console
+                })),
+        )
         .init();
 }
 
@@ -319,7 +443,7 @@ async fn server_loop(
         loop {
             match command_rx.recv().await {
                 Some(command) => {
-                    if command.len() == 0 {
+                    if command.is_empty() {
                         debug!("quit");
 
                         break 'outer;
@@ -338,16 +462,9 @@ async fn server_loop(
             }
         }
         // clear channel
-        loop {
-            match command_rx.try_recv() {
-                Ok(_) => {}
-                Err(_) => {
-                    break;
-                }
-            }
-        }
+        while command_rx.try_recv().is_ok() {}
         // start client
-        client.start(itti, command_rx, &response_tx, &msg_tx).await;
+        client.start(itti, command_rx, response_tx, msg_tx).await;
         // reset
         client.reset();
         // stop

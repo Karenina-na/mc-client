@@ -10,12 +10,20 @@ rust-version = "1.76.0"
 description = "A simple Minecraft client written in Rust."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# useful commands:
+# cargo clippy
+# cargo +nightly udeps
+# cargo bench
+# cargo build --release
 
 [dependencies]
 tokio = { version = "1.36.0", features = ["full"] }
 lazy_static = "1.4.0"
 log = "0.4.20"
-env_logger = { version = "0.11.2", features = ["default",  "color", "auto-color"] }
+tracing = { version = "0.1.40", features = ["default"] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "default"] }
+tracing-core = "0.1.32"
+env_logger = "0.11.2"
 flate2 = "1.0.28"
 toml = "0.8.10"
 serde = { version = "1.0.130", features = ["default", "derive"] }
@@ -25,10 +33,12 @@ reqwest = { version = "0.11.24", features = ["default", "json"] }
 serde_json = "1.0.114"
 validator = { version = "0.16.1", features = ["derive"] }
 regex = "1.10.3"
-indicatif = "0.17.8"
 console = { version = "0.15.8", features = ["default", "unicode-width", "windows-console-colors", "ansi-parsing"]}
 dialoguer = { version = "0.11.0", features = ["default", "fuzzy-select", "history"]}
 crossterm = { version = "0.27.0", features = ["default"]}
+
+[package.metadata.cargo-udeps.ignore]
+normal = ["env_logger"]
 
 [[bin]]
 name = "mc-client"
