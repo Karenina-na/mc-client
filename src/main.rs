@@ -190,29 +190,50 @@ fn init_log(level: String) {
     let log_dir = format!("log/{}", Local::now().format("%Y-%m-%d"));
 
     // writer
-    let debug_file = OpenOptions::new()
+    let debug_file = match OpenOptions::new()
         .create(true)
         .append(true)
-        .open(log_dir.clone() + "/debug.log")
-        .unwrap();
+        .open(log_dir.clone() + "/debug.log") {
+            Ok(f) => f,
+            Err(e) => {
+                error!("open debug.log failed: {}", e);
+                exit(0);
+            }
+        };
 
-    let info_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(log_dir.clone() + "/info.log")
-        .unwrap();
 
-    let warn_file = OpenOptions::new()
+    let info_file = match OpenOptions::new()
         .create(true)
         .append(true)
-        .open(log_dir.clone() + "/warn.log")
-        .unwrap();
+        .open(log_dir.clone() + "/info.log") {
+            Ok(f) => f,
+            Err(e) => {
+                error!("open info.log failed: {}", e);
+                exit(0);
+            }
+    };
 
-    let error_file = OpenOptions::new()
+    let warn_file = match OpenOptions::new()
         .create(true)
         .append(true)
-        .open(log_dir.clone() + "/error.log")
-        .unwrap();
+        .open(log_dir.clone() + "/warn.log") {
+            Ok(f) => f,
+            Err(e) => {
+                error!("open warn.log failed: {}", e);
+                exit(0);
+            }
+    };
+
+    let error_file = match OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_dir.clone() + "/error.log") {
+            Ok(f) => f,
+            Err(e) => {
+                error!("open error.log failed: {}", e);
+                exit(0);
+            }
+    };
 
     // init
     let max_level_debug = max_level.clone();
